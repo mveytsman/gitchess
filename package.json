@@ -1,0 +1,13 @@
+{
+  "name": "chesshub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "setup": "npm run build && ./setup-repo.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

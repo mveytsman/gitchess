@@ -1,0 +1,5 @@
+.direnv/
+chess.git/
+node_modules/
+dist/
+result
