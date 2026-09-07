@@ -1,10 +1,12 @@
-import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ssh2, { type Connection } from "ssh2";
+import { authentication } from "./auth.js";
+import { Users } from "./users.js";
+import { GitRepository } from "./git.js";
 
-const { Server, utils } = ssh2;
+const { Server } = ssh2;
 
 // Compiled entry point lives in dist/; repository paths do not depend on cwd.
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -25,29 +27,14 @@ if (!existsSync(hostKeyPath)) {
 }
 
 const connections = new Set<Connection>();
+const repository = new GitRepository(repo);
+const users = new Users(repository);
 const server = new Server({ hostKeys: [readFileSync(hostKeyPath)] }, (client) => {
+  let player: string | undefined;
   connections.add(client);
   client.once("close", () => connections.delete(client));
   client.on("error", (error: Error) => console.error("SSH:", error.message));
-  client.on("authentication", (ctx) => {
-    if (ctx.username !== "git" || ctx.method !== "publickey") {
-      ctx.reject(["publickey"]);
-      return;
-    }
-    const key = utils.parseKey(ctx.key.data);
-    if (
-      key instanceof Error ||
-      Array.isArray(key) ||
-      (ctx.signature &&
-        (!ctx.blob ||
-          key.verify(ctx.blob, ctx.signature, ctx.hashAlgo) !== true))
-    ) {
-      ctx.reject(["publickey"]);
-      return;
-    }
-    // Unsigned requests are key probes; ssh2 then requires a signed request.
-    ctx.accept();
-  });
+  client.on("authentication", authentication(users, (username) => { player = username; }));
 
   client.on("ready", () => {
     client.on("session", (acceptSession) => {
@@ -65,18 +52,12 @@ const server = new Server({ hostKeys: [readFileSync(hostKeyPath)] }, (client) =>
         const match = /^git-(upload-pack|receive-pack) '\/?chess\.git'$/.exec(
           info.command,
         );
-        if (!match) return reject();
+        if (!match || !player) return reject();
 
         const channel = accept();
-        const env = { ...process.env };
-        // Only forward the Git protocol setting accepted for this SSH session.
-        delete env.GIT_PROTOCOL;
-        if (protocol) env.GIT_PROTOCOL = protocol;
-        const git = spawn("git", [match[1]!, repo], {
-          env,
-          stdio: ["pipe", "pipe", "pipe"],
-          detached: true,
-        });
+        const git = match[1] === "upload-pack"
+          ? repository.uploadPack({ player, protocol })
+          : repository.receivePack({ player, protocol });
         let finished = false;
         const stop = () => {
           if (!git.pid) return;

@@ -18,4 +18,9 @@ printf '#!/usr/bin/env bash\nexec node %q\n' \
   >"$repo/hooks/proc-receive"
 chmod +x "$repo/hooks/proc-receive"
 
+printf '#!/usr/bin/env bash\nexec node %q\n' \
+  "$root/dist/pre-receive.js" \
+  >"$repo/hooks/pre-receive"
+chmod +x "$repo/hooks/pre-receive"
+
 printf 'Bare repository ready at %s\n' "$repo"

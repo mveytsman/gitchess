@@ -1,0 +1,100 @@
+import { spawn, spawnSync } from "node:child_process";
+
+type TransportOptions = { player: string; protocol?: string };
+
+export type RefOperation =
+  | { kind: "create"; ref: string; oid: string }
+  | { kind: "create-symbolic"; ref: string; target: string };
+
+export class GitCommandError extends Error {
+  constructor(
+    readonly args: readonly string[],
+    readonly status: number | null,
+    readonly signal: NodeJS.Signals | null,
+    readonly stderr: string,
+    cause?: Error,
+  ) {
+    super(`Git command failed: ${stderr.trim() || cause?.message || signal || status}`, { cause });
+    this.name = "GitCommandError";
+  }
+}
+
+export class GitRepository {
+  constructor(private readonly path: string) {}
+
+  uploadPack(options: TransportOptions) {
+    return this.spawnTransport("upload-pack", options);
+  }
+
+  receivePack(options: TransportOptions) {
+    return this.spawnTransport("receive-pack", options);
+  }
+
+  private spawnTransport(command: "upload-pack" | "receive-pack", options: TransportOptions) {
+    if (options.protocol !== undefined && !/^version=[012]$/.test(options.protocol)) {
+      throw new Error(`Unsupported Git protocol: ${options.protocol}`);
+    }
+    const env: NodeJS.ProcessEnv = { ...process.env, CHESSHUB_PLAYER: options.player };
+    // Never inherit a protocol setting from the server's environment.
+    delete env.GIT_PROTOCOL;
+    if (options.protocol) env.GIT_PROTOCOL = options.protocol;
+    // The caller owns streams and lifecycle, including killing this process group.
+    return spawn("git", [command, this.path], {
+      env,
+      stdio: ["pipe", "pipe", "pipe"],
+      detached: true,
+    });
+  }
+
+  private run(args: string[], input?: string | Buffer, expectedStatuses = [0]) {
+    const command = [`--git-dir=${this.path}`, ...args];
+    const result = spawnSync("git", command, { input, encoding: "utf8" });
+    if (result.error || result.signal || !expectedStatuses.includes(result.status ?? -1)) {
+      throw new GitCommandError(command, result.status, result.signal,
+        result.stderr ?? "", result.error);
+    }
+    return result;
+  }
+
+  private validateRef(ref: string): void {
+    if (!ref.startsWith("refs/")) throw new Error(`Expected a full ref name: ${ref}`);
+    this.run(["check-ref-format", ref]);
+  }
+
+  hasRef(ref: string): boolean {
+    this.validateRef(ref);
+    // --exists distinguishes a missing ref (2) from an operational error (1).
+    return this.run(["show-ref", "--exists", ref], undefined, [0, 2]).status === 0;
+  }
+
+  readSymbolicRef(ref: string): string | undefined {
+    this.validateRef(ref);
+    const result = this.run(["symbolic-ref", "--quiet", "--no-recurse", ref], undefined, [0, 1]);
+    if (result.status === 0) return result.stdout.trim();
+    if (this.hasRef(ref)) throw new Error(`Expected a symbolic ref: ${ref}`);
+    return undefined;
+  }
+
+  writeBlob(contents: string | Buffer): string {
+    return this.run(["hash-object", "-w", "--stdin"], contents).stdout.trim();
+  }
+
+  transaction(operations: readonly RefOperation[]): void {
+    const commands = operations.map((operation) => {
+      this.validateRef(operation.ref);
+      switch (operation.kind) {
+        case "create":
+          if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(operation.oid)) {
+            throw new Error(`Expected a full object ID: ${operation.oid}`);
+          }
+          return `create ${operation.ref} ${operation.oid}`;
+        case "create-symbolic":
+          this.validateRef(operation.target);
+          return `symref-create ${operation.ref} ${operation.target}`;
+      }
+    });
+    // One process and transaction: both the direct and symbolic refs must be new.
+    this.run(["update-ref", "--no-deref", "--stdin"],
+      ["start", ...commands, "prepare", "commit", ""].join("\n"));
+  }
+}
