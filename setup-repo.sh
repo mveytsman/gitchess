@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo="$root/chess.git"
+repo="$root/var/chess.git"
 
 if [[ ! -d "$repo" ]]; then
   git init --bare "$repo"
