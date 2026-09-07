@@ -143,7 +143,7 @@ test("users are discoverable and fetchable but identity pushes are rejected", ()
   const { dir, repo, users } = fixture();
   const key = keypair();
   users.register("alice", key.publicKey);
-  const hook = fileURLToPath(new URL("../dist/pre-receive.js", import.meta.url));
+  const hook = fileURLToPath(new URL("../dist/hooks/pre-receive.js", import.meta.url));
   writeFileSync(`${repo}/hooks/pre-receive`, `#!/bin/sh\nexec node '${hook}'\n`, { mode: 0o755 });
   const listing = execFileSync("git", ["ls-remote", repo, "refs/users/*"], { encoding: "utf8" });
   assert.match(listing, /refs\/users\/alice/);

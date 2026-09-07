@@ -1,11 +1,12 @@
-# Chesshub
+# ChessHub
 
 A learning project exploring “FUSE for Git” through a Git-backed chess game.
 
 ## Run locally
 
 Use Node.js 24 or newer and Git 2.50 or newer (registration uses symbolic-ref
-transactions). The optional Nix development shell provides both.
+transactions), Bash, and OpenSSH's `ssh-keygen`. The optional Nix development
+shell provides Node.js and Git.
 
 ```sh
 npm ci
@@ -19,7 +20,8 @@ returning keys log in automatically. No account password is required.
 
 `npm run setup` generates the server's persistent
 host key at `var/ssh_host_ed25519`, which is gitignored. Running setup again
-preserves the existing key. This identifies the server and is separate from your
+preserves the existing key. The Bash setup scripts live in `scripts/`;
+`ssh-keygen` also creates the corresponding `.pub` file. This identifies the server and is separate from your
 personal key used to log in.
 
 From another terminal:
@@ -37,9 +39,9 @@ command.
 After verifying possession of an unregistered key, the server asks:
 
 ```text
-Welcome to Chesshub
+Welcome to ChessHub
 Your username and public key will be publicly discoverable.
-Choose a Chesshub username: alice
+Choose a ChessHub username: alice
 ```
 
 Choose 1–32 lowercase letters, digits, underscores or hyphens, starting with a
