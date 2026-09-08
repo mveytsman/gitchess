@@ -1,10 +1,14 @@
 import { createInterface } from "node:readline";
+import { gameRefs } from "../games.js";
 
-// These refs are public to readers, but only server-side registration may write them.
+// Only non-deleting writes to the authenticated player's game aliases are allowed.
 for await (const line of createInterface({ input: process.stdin })) {
-  const ref = line.split(" ")[2] ?? "";
-  if (/^refs\/(users|keys)(\/|$)/.test(ref)) {
-    console.error(`Identity ref ${ref} is server-managed; direct pushes are not allowed.`);
+  const [, oid, ref] = line.split(" ");
+  try {
+    gameRefs(ref ?? "", process.env.CHESSHUB_PLAYER);
+    if (/^0+$/.test(oid ?? "")) throw new Error("Game deletion is not supported");
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   }
 }

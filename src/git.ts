@@ -4,6 +4,8 @@ type TransportOptions = { player: string; protocol?: string };
 
 export type RefOperation =
   | { kind: "create"; ref: string; oid: string }
+  | { kind: "update"; ref: string; oid: string; oldOid: string }
+  | { kind: "verify-symbolic"; ref: string; target: string }
   | { kind: "create-symbolic"; ref: string; target: string };
 
 export class GitCommandError extends Error {
@@ -84,16 +86,24 @@ export class GitRepository {
       this.validateRef(operation.ref);
       switch (operation.kind) {
         case "create":
+        case "update":
           if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(operation.oid)) {
             throw new Error(`Expected a full object ID: ${operation.oid}`);
           }
+          if (operation.kind === "update") {
+            if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(operation.oldOid)) {
+              throw new Error(`Expected a full object ID: ${operation.oldOid}`);
+            }
+            return `update ${operation.ref} ${operation.oid} ${operation.oldOid}`;
+          }
           return `create ${operation.ref} ${operation.oid}`;
         case "create-symbolic":
+        case "verify-symbolic":
           this.validateRef(operation.target);
-          return `symref-create ${operation.ref} ${operation.target}`;
+          return `symref-${operation.kind === "create-symbolic" ? "create" : "verify"} ${operation.ref} ${operation.target}`;
       }
     });
-    // One process and transaction: both the direct and symbolic refs must be new.
+    // Validate every operation before applying the whole batch atomically.
     this.run(["update-ref", "--no-deref", "--stdin"],
       ["start", ...commands, "prepare", "commit", ""].join("\n"));
   }

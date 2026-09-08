@@ -11,7 +11,7 @@ fi
 git --git-dir="$repo" config receive.denyDeletes true
 git --git-dir="$repo" config --replace-all \
   receive.procReceiveRefs \
-  'm:refs/heads/games/'
+  'am:refs/heads/games/'
 
 printf '#!/usr/bin/env bash\nexec node %q\n' \
   "$root/dist/hooks/proc-receive.js" \

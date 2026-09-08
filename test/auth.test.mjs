@@ -39,7 +39,9 @@ test("registration stores a public-key blob and a symbolic fingerprint lookup", 
   const { repo, users } = fixture();
   const { publicKey } = keypair();
   assert.equal(users.lookup(publicKey), undefined);
+  assert.equal(users.exists("alice"), false);
   assert.equal(users.register("alice", publicKey), "alice");
+  assert.equal(users.exists("alice"), true);
   assert.equal(users.lookup(publicKey), "alice");
   const git = (...args) => execFileSync("git", [`--git-dir=${repo}`, ...args], { encoding: "utf8" }).trim();
   assert.equal(git("symbolic-ref", `refs/keys/${fingerprint(publicKey)}`), "refs/users/alice");
@@ -163,7 +165,7 @@ test("users are discoverable and fetchable but identity pushes are rejected", ()
     // Existing identical refs may be skipped by Git; new refs exercise the hook.
     if (ref.endsWith("/new")) {
       assert.notEqual(push.status, 0);
-      assert.match(push.stderr, /server-managed/);
+      assert.match(push.stderr, /Use games\//);
     }
   }
   const deletion = spawnSync("git", ["-C", client, "push", repo, ":refs/users/alice"], { encoding: "utf8" });

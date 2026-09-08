@@ -116,15 +116,51 @@ Both ref prefixes are publicly readable for discovery. The pre-receive hook
 rejects all client creation, modification and deletion of identity refs; only
 server-side registration writes them. The SSH server passes the authenticated
 name to Git and its hooks as `CHESSHUB_PLAYER`; clients cannot set it via SSH
-environment requests. Game membership and turn authorization are not implemented.
+environment requests. Pushes may only write game aliases whose first username
+matches that authenticated name. Direct canonical writes and all other ref paths
+are rejected. Chess rules and turn authorization are not implemented yet.
 
 Run `npm run setup` after updating the code to install both hooks. The setup
 preserves existing users, games and the host key. Run the server yourself with
 `npm start`.
 
-The server hands fetches and pushes to Git subprocesses. The existing
-`proc-receive` hook still rejects modifications to `refs/heads/games/*`; game
-logic is not implemented yet.
+### Game refs
+
+Create a local branch using your username, a registered opponent, and a game ID:
+
+```sh
+git switch -c games/alice/bob/demo
+# Make a commit, then:
+git push -u origin games/alice/bob/demo
+```
+
+IDs contain 1–64 letters, digits, underscores or hyphens. Each pair can have
+multiple games with different IDs; playing yourself is not supported.
+The server creates these refs together:
+
+```text
+refs/heads/games/alice/bob/demo -> refs/heads/canonical/alice/bob/demo
+refs/heads/games/bob/alice/demo -> refs/heads/canonical/alice/bob/demo
+```
+
+The canonical ref stores the commit ID and uses sorted usernames. Both game
+aliases are symbolic refs on the server. Bob can fetch and check out his alias:
+
+```sh
+git fetch origin
+git switch --track origin/games/bob/alice/demo
+```
+
+Clients see ordinary branches; the symbolic relationship stays server-side.
+Each player pushes their own branch, and the hook updates the shared canonical
+ref, checking its previous commit ID to reject concurrent stale updates.
+Fetch/pull before continuing after the other player pushes.
+
+Setup uses `am:refs/heads/games/` to route both creation and modification through
+[proc-receive](https://git-scm.com/docs/githooks#_proc_receive).
+All game updates in a push share one ref transaction. Game deletion is rejected.
+This is ref routing and ownership authorization only: either participant can
+currently submit arbitrary commits, including forced history changes.
 
 Optional configuration:
 

@@ -11,6 +11,10 @@ export class RegistrationError extends Error {}
 export class Users {
   constructor(private readonly git: GitRepository) {}
 
+  exists(username: string): boolean {
+    return this.git.hasRef(`refs/users/${username}`);
+  }
+
   lookup(publicKey: Buffer): string | undefined {
     const target = this.git.readSymbolicRef(`refs/keys/${fingerprint(publicKey)}`);
     if (target === undefined) return undefined;
@@ -44,7 +48,7 @@ export class Users {
       // A concurrent connection using this key may have registered first.
       const winner = this.lookup(publicKey);
       if (winner) return winner;
-      if (this.git.hasRef(userRef)) throw new RegistrationError("That username is taken. Choose another.");
+      if (this.exists(username)) throw new RegistrationError("That username is taken. Choose another.");
       throw error;
     }
     return username;
