@@ -5,7 +5,7 @@ A learning project exploring “FUSE for Git” through a Git-backed chess game.
 ## Run locally
 
 Use Node.js 24 or newer and Git 2.50 or newer (registration uses symbolic-ref
-transactions), Bash, and OpenSSH's `ssh-keygen`. The optional Nix development
+transactions), Bash, OpenSSH's `ssh-keygen`, and `openssl` (for bot key fingerprinting). The optional Nix development
 shell provides Node.js and Git.
 
 ```sh
@@ -23,6 +23,17 @@ host key at `var/ssh_host_ed25519`, which is gitignored. Running setup again
 preserves the existing key. The Bash setup scripts live in `scripts/`;
 `ssh-keygen` also creates the corresponding `.pub` file. This identifies the server and is separate from your
 personal key used to log in.
+
+Setup also generates a separate bot keypair at `var/chessbot_ed25519` (and
+`.pub`) and registers the public key as `_chessbot`. Reruns preserve the key
+and registration; a conflicting identity causes setup to fail rather than
+overwrite it. Underscore-prefixed usernames are reserved and cannot be chosen
+during interactive signup.
+
+You can start a game at `games/<you>/_chessbot/<id>`. This provisions the bot's
+identity only—it does not yet run a bot or generate chess moves. For future bot
+Git commands, select its key with
+`GIT_SSH_COMMAND='ssh -i /absolute/path/to/var/chessbot_ed25519 -o IdentitiesOnly=yes'`.
 
 From another terminal:
 

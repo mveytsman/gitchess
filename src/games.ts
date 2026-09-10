@@ -2,7 +2,7 @@ import { GitRepository, type RefOperation } from "./git.js";
 import { Users } from "./users.js";
 
 export function gameRefs(ref: string, player: string | undefined) {
-  const match = /^refs\/heads\/games\/([a-z][a-z0-9_-]{0,31})\/([a-z][a-z0-9_-]{0,31})\/([a-zA-Z0-9_-]{1,64})$/.exec(ref);
+  const match = /^refs\/heads\/games\/([a-z_][a-z0-9_-]{0,31})\/([a-z_][a-z0-9_-]{0,31})\/([a-zA-Z0-9_-]{1,64})$/.exec(ref);
   if (!match) throw new Error("Use games/<you>/<opponent>/<id>; id must be 1–64 letters, digits, underscores or hyphens");
   const owner = match[1]!, opponent = match[2]!, id = match[3]!;
   if (!player || owner !== player) throw new Error("You may only push games under your own username");

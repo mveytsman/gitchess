@@ -17,7 +17,7 @@ test("game pushes create symbolic aliases, update from either player, and enforc
   run("-C", client, "config", "user.email", "test@example.com");
   const git = new GitRepository(repo);
   const key = git.writeBlob("test key");
-  git.transaction(["alice", "bob", "eve"].map(name => ({ kind: "create", ref: `refs/users/${name}`, oid: key })));
+  git.transaction(["alice", "bob", "eve", "_chessbot"].map(name => ({ kind: "create", ref: `refs/users/${name}`, oid: key })));
   for (const name of ["pre-receive", "proc-receive"]) {
     const hook = fileURLToPath(new URL(`../dist/hooks/${name}.js`, import.meta.url));
     writeFileSync(`${repo}/hooks/${name}`, `#!/bin/sh\nexec '${process.execPath}' '${hook}'\n`, { mode: 0o755 });
@@ -63,4 +63,11 @@ test("game pushes create symbolic aliases, update from either player, and enforc
   assert.equal(git.hasRef("refs/heads/canonical/alice/bob/new"), false);
   assert.equal(git.hasRef("refs/heads/games/alice/bob/new"), false);
   assert.equal(run("--git-dir", repo, "rev-parse", canonical), second);
+  result = push("alice", "HEAD:refs/heads/games/alice/_chessbot/bot-game");
+  assert.equal(result.status, 0, result.stderr);
+  commit();
+  result = push("_chessbot", "HEAD:refs/heads/games/_chessbot/alice/bot-game");
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(git.readSymbolicRef("refs/heads/games/alice/_chessbot/bot-game"),
+    "refs/heads/canonical/_chessbot/alice/bot-game");
 });

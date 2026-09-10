@@ -18,7 +18,7 @@ export class Users {
   lookup(publicKey: Buffer): string | undefined {
     const target = this.git.readSymbolicRef(`refs/keys/${fingerprint(publicKey)}`);
     if (target === undefined) return undefined;
-    const match = /^refs\/users\/([a-z][a-z0-9_-]{0,31})$/.exec(target);
+    const match = /^refs\/users\/([a-z_][a-z0-9_-]{0,31})$/.exec(target);
     if (!match) throw new Error("Invalid user mapping in repository");
     return match[1]!;
   }
