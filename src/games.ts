@@ -55,11 +55,13 @@ export function authorizeGameAction(ref: string, oid: string, player: string | u
 type RepositoryFiles = { readme: string; command: string };
 
 function positionTree(git: GitRepository, fen: string, files: RepositoryFiles): string {
+  const position = renderPosition(fen);
   return git.writeTree([
     { name: "README.md", oid: files.readme },
     { name: "git-chess", oid: files.command, mode: "100755" },
     { name: "position.fen", oid: git.writeBlob(`${fen}\n`) },
-    { name: "position.png", oid: git.writeBlob(renderPosition(fen)) },
+    { name: "position.svg", oid: git.writeBlob(position.svg) },
+    { name: "position.png", oid: git.writeBlob(position.png) },
   ]);
 }
 

@@ -1,8 +1,11 @@
 # gitchess
 
 This repository is a chess board. gitchess stores every accepted position as a
-Git commit containing this guide, the `git-chess` command, `position.fen`, and
-`position.png`.
+Git commit containing this guide, the `git-chess` command, `position.fen`,
+`position.svg`, and `position.png`. The SVG and PNG are two renderings of the
+same FEN position; the SVG uses the
+[Chessnut pieces](https://github.com/LexLuengas/chessnut-pieces) by Alexis
+Luengas, licensed under Apache 2.0.
 
 Clone and enable the repository-local command in one step:
 
@@ -99,6 +102,7 @@ Inspect the current position or its history with ordinary Git commands:
 
 ```sh
 cat position.fen
+open position.svg
 open position.png
 git log --format=fuller
 ```

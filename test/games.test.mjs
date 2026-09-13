@@ -105,8 +105,14 @@ test("game actions create games and validated server-generated positions", () =>
   assert.equal(oid(`${initial}:README.md`), oid("refs/heads/main:README.md"));
   assert.equal(oid(`${initial}:git-chess`), oid("refs/heads/main:git-chess"));
   assert.match(run("--git-dir", repo, "ls-tree", initial, "git-chess"), /^100755 blob /);
+  const svg = git.readFile(initial, "position.svg").toString();
+  assert.match(svg, /^<svg /);
+  assert.match(svg, /Chessnut pieces by Alexis Luengas/);
+  assert.match(svg, /data:image\/svg\+xml;base64,/);
   const png = git.readFile(initial, "position.png");
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(png.readUInt32BE(16), 512);
+  assert.equal(png.readUInt32BE(20), 512);
 
   result = push("alice", "refs/moves", ["move=e4"]);
   assert.notEqual(result.status, 0);
@@ -123,6 +129,8 @@ test("game actions create games and validated server-generated positions", () =>
   assert.equal(oid(`${state1}:README.md`), oid(`${initial}:README.md`));
   assert.equal(git.readFile(state1, "position.fen").toString(),
     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1\n");
+  assert.notEqual(oid(`${state1}:position.svg`), oid(`${initial}:position.svg`));
+  assert.notEqual(oid(`${state1}:position.png`), oid(`${initial}:position.png`));
 
   result = push("alice", "refs/moves", ["move=e5"]);
   assert.notEqual(result.status, 0);
