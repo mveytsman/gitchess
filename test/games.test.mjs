@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { chmodSync, copyFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -17,6 +17,7 @@ test("game actions create games and validated server-generated positions", () =>
   run("-C", client, "config", "user.name", "Test");
   run("-C", client, "config", "user.email", "test@example.com");
   const commandPath = fileURLToPath(new URL("../repository/git-chess", import.meta.url));
+  const workerPath = fileURLToPath(new URL("../dist/bot-worker.js", import.meta.url));
   copyFileSync(commandPath, `${client}/git-chess`);
   chmodSync(`${client}/git-chess`, 0o755);
   run("-C", client, "add", "git-chess");
@@ -159,5 +160,55 @@ test("game actions create games and validated server-generated positions", () =>
     assert.notEqual(result.status, 0, `${player} must not update ${destination}`);
     assert.match(result.stderr, error);
     assert.equal(oid(gameRef), state2);
+  }
+
+  result = chess("alice", "challenge", "_chessbot");
+  assert.equal(result.status, 0, result.stderr);
+  const botBlackBranch = result.stderr.match(/gitchess: created (games\/alice\/_chessbot\/[a-f0-9]{16})/)?.[1];
+  assert.ok(botBlackBranch, result.stderr);
+  const botBlackRef = `refs/heads/${botBlackBranch}`;
+  const botBlackRoot = oid(botBlackRef);
+  assert.equal(git.readCommit(botBlackRoot).parents.length, 0);
+
+  const worker = spawn(process.execPath, [workerPath], {
+    env: { ...process.env, GITCHESS_REPO: repo, GITCHESS_BOT_INTERVAL_MS: "10" },
+    stdio: "ignore",
+  });
+  try {
+    result = chess("alice", "move", "e4");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /gitchess: played e4/);
+    const queuedHumanMove = result.stderr.match(/gitchess: queued _chessbot at ([a-f0-9]+)/)?.[1];
+    assert.ok(queuedHumanMove, result.stderr);
+    const botBlackReply = oid(botBlackRef);
+    const humanMove = run("--git-dir", repo, "rev-parse", `${botBlackReply}^`);
+    assert.equal(humanMove, queuedHumanMove);
+    assert.equal(run("--git-dir", repo, "rev-parse", `${humanMove}^`), botBlackRoot);
+    assert.equal(git.readCommit(humanMove).author, "alice");
+    assert.equal(git.readCommit(humanMove).message, "e4\n");
+    assert.equal(git.readCommit(botBlackReply).author, "_chessbot");
+    assert.equal(git.readCommit(botBlackReply).parents[0], humanMove);
+
+    result = chess("alice", "challenge", "_chessbot", "--black");
+    assert.equal(result.status, 0, result.stderr);
+    const queuedOpening = result.stderr.match(/gitchess: queued _chessbot at ([a-f0-9]+)/)?.[1];
+    assert.ok(queuedOpening, result.stderr);
+    const botWhiteBranch = result.stderr.match(/gitchess: created (games\/_chessbot\/alice\/[a-f0-9]{16})/)?.[1];
+    assert.ok(botWhiteBranch, result.stderr);
+    const botWhiteRef = `refs/heads/${botWhiteBranch}`;
+    const botWhiteHead = oid(botWhiteRef);
+    const botWhiteRoot = run("--git-dir", repo, "rev-parse", `${botWhiteHead}^`);
+    assert.equal(botWhiteRoot, queuedOpening);
+    assert.equal(git.readCommit(botWhiteRoot).parents.length, 0);
+    assert.equal(git.readCommit(botWhiteRoot).author, "alice");
+    assert.equal(git.readCommit(botWhiteHead).author, "_chessbot");
+    assert.equal(git.readCommit(botWhiteHead).parents[0], botWhiteRoot);
+
+    execFileSync(process.execPath, [workerPath, "--once"], {
+      env: { ...process.env, GITCHESS_REPO: repo },
+    });
+    assert.equal(oid(botWhiteRef), botWhiteHead);
+  } finally {
+    worker.kill();
   }
 });

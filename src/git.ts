@@ -4,6 +4,7 @@ type TransportOptions = { player: string; protocol?: string };
 
 export type GitCommit = { tree: string; parents: string[]; author: string; message: string };
 export type TreeEntry = { name: string; oid: string; mode?: "100644" | "100755" };
+export type DirectRef = { ref: string; oid: string };
 
 export type RefOperation =
   | { kind: "create"; ref: string; oid: string }
@@ -119,6 +120,22 @@ export class GitRepository {
       namespace,
     ]).stdout.trim();
     return output ? output.split("\n") : [];
+  }
+
+  listDirectRefs(namespace: string): DirectRef[] {
+    this.validateRef(namespace);
+    const output = this.run([
+      "for-each-ref",
+      "--format=%(refname)%09%(objectname)%09%(symref)",
+      namespace,
+    ]).stdout.trim();
+    if (!output) return [];
+    return output.split("\n").flatMap((line) => {
+      const [ref, oid, symbolicTarget] = line.split("\t");
+      if (!ref || !oid || symbolicTarget) return [];
+      this.validateOid(oid);
+      return [{ ref, oid }];
+    });
   }
 
   writeBlob(contents: string | Buffer): string {

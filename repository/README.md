@@ -92,6 +92,21 @@ Your entries under `refs/my-games/<you>/...` are symbolic refs to the public
 game branches. Other players' personalized indexes are hidden, but their public
 games remain visible.
 
+## Play the bot
+
+`_chessbot` is a registered player backed by `js-chess-engine`:
+
+```sh
+git chess challenge _chessbot
+git chess move e4
+```
+
+When the bot is next to move, the game ref becomes work for a separate bot
+process. Its reply is a normal Git commit authored by `_chessbot`, so the
+history shows the human move followed by the bot move. `git chess` waits briefly
+for that commit. If the worker is unavailable, the move remains queued in Git
+and the command tells you to pull again later.
+
 ## Make a move
 
 Send one move in standard algebraic notation (SAN):

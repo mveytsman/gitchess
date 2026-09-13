@@ -12,6 +12,8 @@ shell provides Node.js and Git.
 npm ci
 npm run setup
 npm start
+# In another terminal:
+npm run bot
 ```
 
 The server listens on `127.0.0.1:2222`. Connect as SSH user `git` with your own
@@ -30,24 +32,25 @@ and registration; a conflicting identity causes setup to fail rather than
 overwrite it. Underscore-prefixed usernames are reserved and cannot be chosen
 during interactive signup.
 
-You can challenge `_chessbot`; gitchess generates the game ID. This provisions
-the bot's identity only—it does not yet run a bot or generate chess moves. For
-future bot Git commands, select its key with
-`GIT_SSH_COMMAND='ssh -i /absolute/path/to/var/chessbot_ed25519 -o IdentitiesOnly=yes'`.
+The bot worker operates directly on the Git repository, so it does not use the
+bot's private SSH key at runtime. The keypair gives `_chessbot` a normal stored
+identity alongside other players.
 
-From another terminal:
+From another terminal, clone into a directory outside this project checkout
+(a clone placed inside it would otherwise show up as an untracked embedded
+repository):
 
 ```sh
-git clone ssh://git@localhost:2222/chess.git chess
-cd chess
+git clone ssh://git@localhost:2222/chess.git ~/chess
+cd ~/chess
 ```
 
 To configure the repository-local `git chess` alias as part of cloning:
 
 ```sh
 git clone -c alias.chess='!./git-chess' \
-  ssh://git@localhost:2222/chess.git chess
-cd chess
+  ssh://git@localhost:2222/chess.git ~/chess
+cd ~/chess
 ```
 
 SSH will ask you to trust the local server's host key on the first connection.
@@ -74,7 +77,7 @@ OpenSSH). For a client configuration that disables it, try:
 
 ```sh
 GIT_SSH_COMMAND='ssh -o BatchMode=no -o KbdInteractiveAuthentication=yes -o PreferredAuthentications=publickey,keyboard-interactive' \
-  git clone ssh://git@localhost:2222/chess.git chess
+  git clone ssh://git@localhost:2222/chess.git ~/chess
 ```
 
 Register a key interactively before using it in automated jobs. There is no
@@ -247,6 +250,18 @@ The Bash client is intentionally thin. Underneath, `challenge` pushes
 `opponent` and `color` options to `refs/new-game`, while `move` pushes a `move`
 option to `refs/moves`. `git chess players` lists the public user refs.
 
+`_chessbot` is a registered player backed by `js-chess-engine` at difficulty
+level 2. `proc-receive` commits the human action and returns; the separate
+`npm run bot` process discovers game tips where `_chessbot` is to move and
+appends a normal commit authored by `_chessbot`. The game refs themselves are
+the durable queue, so pending turns survive worker restarts.
+
+The worker updates a game with a compare-and-swap against the tip it examined.
+That prevents two workers from answering the same position. `git chess` waits
+briefly for the bot ref to advance and fast-forwards when the response arrives;
+if the worker is unavailable, it leaves the turn queued and tells the player to
+pull later.
+
 To inspect refs directly:
 
 ```sh
@@ -267,6 +282,7 @@ Optional configuration:
 | `GITCHESS_PORT` | `2222` |
 | `GITCHESS_REPO` | Project's `var/chess.git` directory |
 | `GITCHESS_HOST_KEY` | Project's `var/ssh_host_ed25519` |
+| `GITCHESS_BOT_INTERVAL_MS` | `1000` |
 
 If overriding `GITCHESS_HOST_KEY`, use the same value for setup and start. Keep any
 custom key path outside version control.
@@ -279,7 +295,8 @@ npm run build
 npm test
 ```
 
-TypeScript files in `src/` compile to `dist/`. `npm start` builds before starting the
-server, and `npm run setup` builds, generates the local SSH host key if missing,
-and installs both hooks into the local bare repository. Tests use temporary Git
-repositories and simulated authentication events; they do not start an SSH server.
+TypeScript files in `src/` compile to `dist/`. `npm start` and `npm run bot`
+build before starting their respective processes. `npm run setup` builds,
+generates the local SSH host key if missing, and installs both hooks into the
+local bare repository. Tests use temporary Git repositories and simulated
+authentication events; they do not start an SSH server.

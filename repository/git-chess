@@ -18,6 +18,28 @@ require_repository() {
   }
 }
 
+queued_oid() {
+  sed -n 's|.*gitchess: queued _chessbot at \([a-f0-9][a-f0-9]*\).*|\1|p' |
+    tail -n 1
+}
+
+wait_for_bot() {
+  local queued="$1"
+  local upstream
+  for ((attempt = 0; attempt < 100; attempt++)); do
+    git fetch --quiet origin
+    upstream="$(git rev-parse '@{upstream}')"
+    if [[ "$upstream" != "$queued" ]] &&
+      [[ "$(git show -s --format=%an "$upstream")" == _chessbot ]]; then
+      git merge --ff-only "$upstream"
+      return
+    fi
+    sleep 0.1
+  done
+  git merge --ff-only '@{upstream}'
+  printf '_chessbot is still queued; run git pull --ff-only later\n' >&2
+}
+
 command="${1:-}"
 case "$command" in
   install)
@@ -59,14 +81,26 @@ case "$command" in
     fi
     git fetch origin "refs/heads/$game_ref:refs/remotes/origin/$game_ref"
     git switch --track -c "$game_ref" "origin/$game_ref"
+    queued="$(printf '%s\n' "$output" | queued_oid)"
+    [[ -z "$queued" ]] || wait_for_bot "$queued"
     ;;
 
   move)
     [[ $# -eq 2 ]] || { usage >&2; exit 1; }
     require_repository
     git pull --ff-only
-    git push -o "move=$2" origin HEAD:refs/moves
-    git pull --ff-only
+    set +e
+    output="$(git push -o "move=$2" origin HEAD:refs/moves 2>&1)"
+    status=$?
+    set -e
+    printf '%s\n' "$output" >&2
+    [[ $status -eq 0 ]] || exit "$status"
+    queued="$(printf '%s\n' "$output" | queued_oid)"
+    if [[ -n "$queued" ]]; then
+      wait_for_bot "$queued"
+    else
+      git pull --ff-only
+    fi
     ;;
 
   help|-h|--help)

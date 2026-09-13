@@ -9,6 +9,7 @@ const GAME_ID = "[a-f0-9]{16}";
 
 export const NEW_GAME_REF = "refs/new-game";
 export const MOVE_REF = "refs/moves";
+export const CHESSBOT = "_chessbot";
 
 type Game = {
   white: string;
@@ -53,6 +54,7 @@ export function authorizeGameAction(ref: string, oid: string, player: string | u
 }
 
 type RepositoryFiles = { readme: string; command: string };
+export type QueuedBotGame = { ref: string; oid: string; fen: string };
 
 function positionTree(git: GitRepository, fen: string, files: RepositoryFiles): string {
   const position = renderPosition(fen);
@@ -74,12 +76,37 @@ function repositoryFiles(git: GitRepository): RepositoryFiles {
   };
 }
 
+function position(git: GitRepository, oid: string): Chess {
+  return new Chess(git.readFile(oid, "position.fen").toString("utf8").trimEnd());
+}
+
+function playerToMove(game: Game, chess: Chess): string {
+  return chess.turn() === "w" ? game.white : game.black;
+}
+
+export function queuedBotGame(
+  git: GitRepository,
+  ref: string,
+  oid: string,
+): QueuedBotGame | undefined {
+  let game: Game;
+  try {
+    game = parseGameRef(ref);
+  } catch {
+    return undefined;
+  }
+  if (game.white !== CHESSBOT && game.black !== CHESSBOT) return undefined;
+  const chess = position(git, oid);
+  if (chess.isGameOver() || playerToMove(game, chess) !== CHESSBOT) return undefined;
+  return { ref, oid, fen: chess.fen() };
+}
+
 export function createGame(
   git: GitRepository,
   opponent: string,
   color: string,
   player: string | undefined,
-): { game: Game; operations: RefOperation[]; newOid: string } {
+): { game: Game; operations: RefOperation[]; newOid: string; botQueued: boolean } {
   const creator = requirePlayer(player);
   if (!new RegExp(`^${USERNAME}$`).test(opponent)) throw new Error(`Invalid opponent: ${opponent}`);
   if (creator === opponent) throw new Error("Choose another player as your opponent");
@@ -96,8 +123,9 @@ export function createGame(
   const game = gameRefs(white, black, id);
   const chosenColor = color === "white" ? "White" : "Black";
   const message = `Start game ${id}\n\n${creator} challenged ${opponent} and chose ${chosenColor}.`;
+  const files = repositoryFiles(git);
   const newOid = git.createCommit(
-    positionTree(git, INITIAL_FEN, repositoryFiles(git)),
+    positionTree(git, INITIAL_FEN, files),
     [],
     message,
     creator,
@@ -105,6 +133,7 @@ export function createGame(
   return {
     game,
     newOid,
+    botQueued: white === CHESSBOT,
     operations: [
       { kind: "create", ref: game.publicRef, oid: newOid },
       ...game.indexes.map((index): RefOperation => (
@@ -119,7 +148,7 @@ export function gameMove(
   currentOid: string,
   requestedMove: string,
   player: string | undefined,
-): { game: Game; operations: RefOperation[]; newOid: string; move: string } {
+): { game: Game; operations: RefOperation[]; newOid: string; move: string; botQueued: boolean } {
   const authenticatedPlayer = requirePlayer(player);
   const matches = git.refsPointingAt(currentOid, "refs/heads/games");
   if (matches.length === 0) throw new Error("No current game has that position; fetch it and retry");
@@ -129,20 +158,14 @@ export function gameMove(
     throw new Error("You are not a player in that game");
   }
 
-  const current = git.readCommit(currentOid);
-  let expectedPlayer: string;
-  if (current.parents.length === 0) expectedPlayer = game.white;
-  else if (current.author === game.white) expectedPlayer = game.black;
-  else if (current.author === game.black) expectedPlayer = game.white;
-  else throw new Error("The current position was not authored by either player");
+  const chess = position(git, currentOid);
+  const expectedPlayer = playerToMove(game, chess);
   if (authenticatedPlayer !== expectedPlayer) throw new Error(`It is ${expectedPlayer}'s turn`);
 
   const moveText = requestedMove.trim();
   if (!moveText || moveText.length > 32 || moveText.includes("\n")) {
     throw new Error("Provide exactly one SAN move");
   }
-  const fen = git.readFile(currentOid, "position.fen").toString("utf8").trimEnd();
-  const chess = new Chess(fen);
   let move;
   try {
     move = chess.move(moveText, { strict: false });
@@ -150,16 +173,20 @@ export function gameMove(
     throw new Error(`Illegal move: ${moveText}`);
   }
 
+  const files = repositoryFiles(git);
   const newOid = git.createCommit(
-    positionTree(git, chess.fen(), repositoryFiles(git)),
+    positionTree(git, chess.fen(), files),
     [currentOid],
     move.san,
     authenticatedPlayer,
   );
+  const nextPlayer = authenticatedPlayer === game.white ? game.black : game.white;
+  const botQueued = nextPlayer === CHESSBOT && !chess.isGameOver();
   return {
     game,
     newOid,
     move: move.san,
+    botQueued,
     operations: [
       ...game.indexes.map((index): RefOperation => (
         { kind: "verify-symbolic", ref: index, target: game.publicRef }

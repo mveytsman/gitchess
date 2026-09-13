@@ -7,6 +7,7 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/*.test.mjs",
     "start": "npm run build && node dist/server.js",
+    "bot": "npm run build && node dist/bot-worker.js",
     "setup": "npm run build && bash scripts/setup-host-key.sh && bash scripts/setup-repo.sh && bash scripts/setup-bot.sh"
   },
   "devDependencies": {
@@ -17,6 +18,7 @@
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "chess.js": "^1.4.0",
+    "js-chess-engine": "^2.4.6",
     "ssh2": "^1.17.0"
   }
 }
