@@ -74,8 +74,23 @@ git push -o opponent=bob -o color=black origin HEAD:refs/new-game
 The server prints the generated branch; `git chess challenge` extracts its ID
 and performs the fetch and switch automatically.
 
-The first username in your `games/...` branch is always your own; color is
-determined by the canonical game ref, not by the alias order.
+Public game branches are ordered White then Black. For example:
+
+```text
+refs/heads/games/alice/bob/0123456789abcdef
+```
+
+Browse every public game, or just the personalized indexes visible to your
+authenticated key:
+
+```sh
+git ls-remote origin 'refs/heads/games/*'
+git ls-remote origin 'refs/my-games/*'
+```
+
+Your entries under `refs/my-games/<you>/...` are symbolic refs to the public
+game branches. Other players' personalized indexes are hidden, but their public
+games remain visible.
 
 ## Make a move
 

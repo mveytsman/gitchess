@@ -48,10 +48,9 @@ export class GitRepository {
     if (options.protocol) env.GIT_PROTOCOL = options.protocol;
     const hideRefs = command === "upload-pack"
       ? [
-          "refs/",
-          "!refs/users/",
-          "!refs/heads/main",
-          `!refs/heads/games/${options.player}/`,
+          "refs/keys/",
+          "refs/my-games/",
+          `!refs/my-games/${options.player}/`,
         ]
       : [
           "refs/",

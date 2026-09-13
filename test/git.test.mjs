@@ -29,22 +29,22 @@ test("transport processes stream Git advertisements and use only the requested p
     { kind: "create", ref: "refs/users/alice", oid: key },
     { kind: "create", ref: "refs/users/bob", oid: key },
     { kind: "create-symbolic", ref: "refs/keys/fingerprint", target: "refs/users/alice" },
-    { kind: "create", ref: "refs/heads/canonical/alice/bob/aaaaaaaaaaaaaaaa", oid: aliceGame },
+    { kind: "create", ref: "refs/heads/games/alice/bob/aaaaaaaaaaaaaaaa", oid: aliceGame },
     {
       kind: "create-symbolic",
-      ref: "refs/heads/games/alice/bob/aaaaaaaaaaaaaaaa",
-      target: "refs/heads/canonical/alice/bob/aaaaaaaaaaaaaaaa",
+      ref: "refs/my-games/alice/bob/aaaaaaaaaaaaaaaa",
+      target: "refs/heads/games/alice/bob/aaaaaaaaaaaaaaaa",
     },
     {
       kind: "create-symbolic",
-      ref: "refs/heads/games/bob/alice/aaaaaaaaaaaaaaaa",
-      target: "refs/heads/canonical/alice/bob/aaaaaaaaaaaaaaaa",
+      ref: "refs/my-games/bob/alice/aaaaaaaaaaaaaaaa",
+      target: "refs/heads/games/alice/bob/aaaaaaaaaaaaaaaa",
     },
-    { kind: "create", ref: "refs/heads/canonical/bob/carol/bbbbbbbbbbbbbbbb", oid: bobGame },
+    { kind: "create", ref: "refs/heads/games/bob/carol/bbbbbbbbbbbbbbbb", oid: bobGame },
     {
       kind: "create-symbolic",
-      ref: "refs/heads/games/bob/carol/bbbbbbbbbbbbbbbb",
-      target: "refs/heads/canonical/bob/carol/bbbbbbbbbbbbbbbb",
+      ref: "refs/my-games/bob/carol/bbbbbbbbbbbbbbbb",
+      target: "refs/heads/games/bob/carol/bbbbbbbbbbbbbbbb",
     },
   ]);
   inspect("symbolic-ref", "HEAD", "refs/heads/main");
@@ -70,12 +70,13 @@ test("transport processes stream Git advertisements and use only the requested p
     "refs/users/alice",
     "refs/users/bob",
     "refs/heads/games/alice/bob/aaaaaaaaaaaaaaaa",
+    "refs/heads/games/bob/carol/bbbbbbbbbbbbbbbb",
+    "refs/my-games/alice/bob/aaaaaaaaaaaaaaaa",
   ]) assert.match(results[0].stdout, new RegExp(ref));
   for (const ref of [
     "refs/keys/fingerprint",
-    "refs/heads/canonical/",
-    "refs/heads/games/bob/alice/aaaaaaaaaaaaaaaa",
-    "refs/heads/games/bob/carol/bbbbbbbbbbbbbbbb",
+    "refs/my-games/bob/alice/aaaaaaaaaaaaaaaa",
+    "refs/my-games/bob/carol/bbbbbbbbbbbbbbbb",
   ]) assert.doesNotMatch(results[0].stdout, new RegExp(ref));
   assert.match(results[1].stdout, /report-status/);
   assert.doesNotMatch(results[1].stdout, /refs\/(?:heads|users|keys)\//);

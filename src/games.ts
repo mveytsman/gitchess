@@ -14,8 +14,8 @@ type Game = {
   white: string;
   black: string;
   id: string;
-  canonical: string;
-  aliases: [string, string];
+  publicRef: string;
+  indexes: [string, string];
 };
 
 function gameRefs(white: string, black: string, id: string): Game {
@@ -23,17 +23,17 @@ function gameRefs(white: string, black: string, id: string): Game {
     white,
     black,
     id,
-    canonical: `refs/heads/canonical/${white}/${black}/${id}`,
-    aliases: [
-      `refs/heads/games/${white}/${black}/${id}`,
-      `refs/heads/games/${black}/${white}/${id}`,
+    publicRef: `refs/heads/games/${white}/${black}/${id}`,
+    indexes: [
+      `refs/my-games/${white}/${black}/${id}`,
+      `refs/my-games/${black}/${white}/${id}`,
     ],
   };
 }
 
-function parseCanonicalRef(ref: string): Game {
-  const match = new RegExp(`^refs/heads/canonical/(${USERNAME})/(${USERNAME})/(${GAME_ID})$`).exec(ref);
-  if (!match) throw new Error(`Invalid canonical game ref: ${ref}`);
+function parseGameRef(ref: string): Game {
+  const match = new RegExp(`^refs/heads/games/(${USERNAME})/(${USERNAME})/(${GAME_ID})$`).exec(ref);
+  if (!match) throw new Error(`Invalid game ref: ${ref}`);
   return gameRefs(match[1]!, match[2]!, match[3]!);
 }
 
@@ -106,9 +106,9 @@ export function createGame(
     game,
     newOid,
     operations: [
-      { kind: "create", ref: game.canonical, oid: newOid },
-      ...game.aliases.map((alias): RefOperation => (
-        { kind: "create-symbolic", ref: alias, target: game.canonical }
+      { kind: "create", ref: game.publicRef, oid: newOid },
+      ...game.indexes.map((index): RefOperation => (
+        { kind: "create-symbolic", ref: index, target: game.publicRef }
       )),
     ],
   };
@@ -121,10 +121,10 @@ export function gameMove(
   player: string | undefined,
 ): { game: Game; operations: RefOperation[]; newOid: string; move: string } {
   const authenticatedPlayer = requirePlayer(player);
-  const matches = git.refsPointingAt(currentOid, "refs/heads/canonical");
+  const matches = git.refsPointingAt(currentOid, "refs/heads/games");
   if (matches.length === 0) throw new Error("No current game has that position; fetch it and retry");
   if (matches.length > 1) throw new Error("That position identifies more than one game");
-  const game = parseCanonicalRef(matches[0]!);
+  const game = parseGameRef(matches[0]!);
   if (authenticatedPlayer !== game.white && authenticatedPlayer !== game.black) {
     throw new Error("You are not a player in that game");
   }
@@ -161,10 +161,10 @@ export function gameMove(
     newOid,
     move: move.san,
     operations: [
-      ...game.aliases.map((alias): RefOperation => (
-        { kind: "verify-symbolic", ref: alias, target: game.canonical }
+      ...game.indexes.map((index): RefOperation => (
+        { kind: "verify-symbolic", ref: index, target: game.publicRef }
       )),
-      { kind: "update", ref: game.canonical, oid: newOid, oldOid: currentOid },
+      { kind: "update", ref: game.publicRef, oid: newOid, oldOid: currentOid },
     ],
   };
 }

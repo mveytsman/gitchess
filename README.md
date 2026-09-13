@@ -136,20 +136,21 @@ requiring both names to be absent. This prevents concurrent requests from
 claiming the same username or registering one key as multiple users. Returning
 connections verify a fresh signature and resolve the fingerprint's symbolic ref.
 
-Both ref prefixes are publicly readable for discovery. The pre-receive hook
-rejects all client creation, modification and deletion of identity refs; only
-server-side registration writes them. The SSH server passes the authenticated
-name to Git and its hooks as `GITCHESS_PLAYER`; clients cannot set it via SSH
-environment requests. Clients invoke the write-only `refs/new-game` and
-`refs/moves` action refs. Direct writes to identity, game, canonical, and normal
-branch refs are rejected.
+User refs are publicly readable for discovery; key-fingerprint refs are hidden.
+The pre-receive hook rejects all client creation, modification and deletion of
+identity refs; only server-side registration writes them. The SSH server passes
+the authenticated name to Git and its hooks as `GITCHESS_PLAYER`; clients
+cannot set it via SSH environment requests. Clients invoke the write-only
+`refs/new-game` and `refs/moves` action refs. Direct writes to identity, game,
+and normal branch refs are rejected.
 
 Ref advertisements are filtered for each authenticated player. Fetches and
-`git ls-remote` expose only the user list, `main`, and game aliases beginning
-with `games/<authenticated-user>/`. Key mappings, canonical refs, and other
-players' game aliases are hidden. Push advertisements hide all stored refs and
-permit only the `refs/new-game` and `refs/moves` action paths. These rules are
-passed directly to each Git transport subprocess, so they can vary by player.
+`git ls-remote` expose the user list, `main`, every public branch under
+`refs/heads/games`, and the authenticated player's symbolic indexes under
+`refs/my-games/<username>`. Key mappings and other players' `my-games` indexes
+are hidden. Push advertisements hide all stored refs and permit only the
+`refs/new-game` and `refs/moves` action paths. These rules are passed directly
+to each Git transport subprocess, so they can vary by player.
 
 Run `npm run setup` after updating the code to install both hooks. The setup
 preserves existing users, games and the host key. Run the server yourself with
@@ -199,20 +200,25 @@ the generated ID from the server response before running the fetch and switch.
 `refs/new-game` is a pseudo-ref: proc-receive handles the action but never stores
 that ref. The pushed `HEAD` merely gives Git an object to send; it does not become
 part of the game. The server creates a unique root commit containing the initial
-`position.fen`, `position.svg`, and `position.png`. For Alice choosing Black, the refs look like:
+`position.fen`, `position.svg`, and `position.png`. For Alice choosing Black,
+the refs look like:
 
 ```text
-refs/heads/games/alice/bob/0123456789abcdef -> refs/heads/canonical/bob/alice/0123456789abcdef
-refs/heads/games/bob/alice/0123456789abcdef -> refs/heads/canonical/bob/alice/0123456789abcdef
+refs/heads/games/bob/alice/0123456789abcdef
+refs/my-games/alice/bob/0123456789abcdef -> refs/heads/games/bob/alice/0123456789abcdef
+refs/my-games/bob/alice/0123456789abcdef -> refs/heads/games/bob/alice/0123456789abcdef
 ```
 
-The canonical path is ordered White then Black. Each player's alias is ordered
-self then opponent, and both symbolic aliases point to the same canonical ref.
-Fetch the server-created commit and check out the alias printed by the push:
+The public branch is authoritative and ordered White then Black. Each player's
+symbolic index is ordered self then opponent and follows that public branch.
+Everyone can browse every game, while each player sees only their own
+`refs/my-games` indexes:
 
 ```sh
+git ls-remote origin 'refs/heads/games/*'
+git ls-remote origin 'refs/my-games/*'
 git fetch origin
-git switch --track origin/games/alice/bob/0123456789abcdef
+git switch --track origin/games/bob/alice/0123456789abcdef
 ```
 
 Make a move using strict SAN. The command fast-forward pulls before the action,
@@ -230,7 +236,7 @@ git push -o move=e4 origin HEAD:refs/moves
 git pull --ff-only
 ```
 
-`HEAD` identifies the exact game and position because the unique canonical game
+`HEAD` identifies the exact game and position because the unique public game
 ref points to that commit. The server rejects stale positions, wrong turns, and
 illegal moves. For a legal move it creates a child position commit whose author
 is the authenticated mover and whose committer is gitchess. The client then

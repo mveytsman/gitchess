@@ -80,17 +80,17 @@ test("game actions create games and validated server-generated positions", () =>
 
   let result = chess("alice", "challenge", "bob", "--black");
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /gitchess: created games\/alice\/bob\/[a-f0-9]{16}/);
-  const canonical = run(
-    "--git-dir", repo, "for-each-ref", "--format=%(refname)", "refs/heads/canonical",
+  assert.match(result.stderr, /gitchess: created games\/bob\/alice\/[a-f0-9]{16}/);
+  const gameRef = run(
+    "--git-dir", repo, "for-each-ref", "--format=%(refname)", "refs/heads/games",
   );
-  const match = /^refs\/heads\/canonical\/bob\/alice\/([a-f0-9]{16})$/.exec(canonical);
-  assert.ok(match, canonical);
+  const match = /^refs\/heads\/games\/bob\/alice\/([a-f0-9]{16})$/.exec(gameRef);
+  assert.ok(match, gameRef);
   const id = match[1];
-  const alice = `refs/heads/games/alice/bob/${id}`;
-  const bob = `refs/heads/games/bob/alice/${id}`;
-  const initial = oid(canonical);
-  assert.equal(run("-C", client, "branch", "--show-current"), `games/alice/bob/${id}`);
+  const alice = `refs/my-games/alice/bob/${id}`;
+  const bob = `refs/my-games/bob/alice/${id}`;
+  const initial = oid(gameRef);
+  assert.equal(run("-C", client, "branch", "--show-current"), `games/bob/alice/${id}`);
   assert.equal(git.hasRef("refs/new-game"), false);
   assert.equal(git.readCommit(initial).parents.length, 0);
   assert.equal(git.readCommit(initial).author, "alice");
@@ -98,7 +98,7 @@ test("game actions create games and validated server-generated positions", () =>
     git.readCommit(initial).message,
     `Start game ${id}\n\nalice challenged bob and chose Black.\n`,
   );
-  for (const alias of [alice, bob]) assert.equal(git.readSymbolicRef(alias), canonical);
+  for (const index of [alice, bob]) assert.equal(git.readSymbolicRef(index), gameRef);
   assert.equal(git.readFile(initial, "position.fen").toString(),
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\n");
   assert.equal(git.readFile(initial, "README.md").toString(), "# gitchess\n");
@@ -111,18 +111,18 @@ test("game actions create games and validated server-generated positions", () =>
   assert.match(svg, /data:image\/svg\+xml;base64,/);
   const png = git.readFile(initial, "position.png");
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
-  assert.equal(png.readUInt32BE(16), 512);
-  assert.equal(png.readUInt32BE(20), 512);
+  assert.equal(png.readUInt32BE(16), 1024);
+  assert.equal(png.readUInt32BE(20), 1024);
 
   result = push("alice", "refs/moves", ["move=e4"]);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /It is bob's turn/);
-  assert.equal(oid(canonical), initial);
+  assert.equal(oid(gameRef), initial);
 
   result = push("bob", "refs/moves", ["move=e4"]);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(git.hasRef("refs/moves"), false);
-  const state1 = oid(canonical);
+  const state1 = oid(gameRef);
   assert.equal(run("--git-dir", repo, "rev-parse", `${state1}^`), initial);
   assert.equal(git.readCommit(state1).author, "bob");
   assert.equal(git.readCommit(state1).message, "e4\n");
@@ -137,7 +137,7 @@ test("game actions create games and validated server-generated positions", () =>
   assert.match(result.stderr, /No current game has that position/);
   result = chess("alice", "move", "e5");
   assert.equal(result.status, 0, result.stderr);
-  const state2 = oid(canonical);
+  const state2 = oid(gameRef);
   assert.equal(run("-C", client, "rev-parse", "HEAD"), state2);
   assert.equal(git.readCommit(state2).author, "alice");
   assert.equal(oid(`${state2}:README.md`), oid(`${initial}:README.md`));
@@ -158,6 +158,6 @@ test("game actions create games and validated server-generated positions", () =>
     result = push(player, destination, options);
     assert.notEqual(result.status, 0, `${player} must not update ${destination}`);
     assert.match(result.stderr, error);
-    assert.equal(oid(canonical), state2);
+    assert.equal(oid(gameRef), state2);
   }
 });
