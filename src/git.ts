@@ -39,12 +39,29 @@ export class GitRepository {
     if (options.protocol !== undefined && !/^version=[012]$/.test(options.protocol)) {
       throw new Error(`Unsupported Git protocol: ${options.protocol}`);
     }
+    if (!/^[a-z_][a-z0-9_-]{0,31}$/.test(options.player)) {
+      throw new Error(`Invalid player: ${options.player}`);
+    }
     const env: NodeJS.ProcessEnv = { ...process.env, GITCHESS_PLAYER: options.player };
     // Never inherit a protocol setting from the server's environment.
     delete env.GIT_PROTOCOL;
     if (options.protocol) env.GIT_PROTOCOL = options.protocol;
+    const hideRefs = command === "upload-pack"
+      ? [
+          "refs/",
+          "!refs/users/",
+          "!refs/heads/main",
+          `!refs/heads/games/${options.player}/`,
+        ]
+      : [
+          "refs/",
+          "!refs/new-game",
+          "!refs/moves",
+        ];
+    const config = command === "upload-pack" ? "uploadpack.hideRefs" : "receive.hideRefs";
+    const args = hideRefs.flatMap((pattern) => ["-c", `${config}=${pattern}`]);
     // The caller owns streams and lifecycle, including killing this process group.
-    return spawn("git", [command, this.path], {
+    return spawn("git", [...args, command, this.path], {
       env,
       stdio: ["pipe", "pipe", "pipe"],
       detached: true,

@@ -18,7 +18,36 @@ function finishTransport(child) {
 }
 
 test("transport processes stream Git advertisements and use only the requested protocol", async () => {
-  const { git } = fixture();
+  const { git, inspect } = fixture();
+  const key = git.writeBlob("public key");
+  const tree = git.writeTree([]);
+  const main = git.createCommit(tree, [], "Welcome", "alice");
+  const aliceGame = git.createCommit(tree, [], "Alice's game", "alice");
+  const bobGame = git.createCommit(tree, [], "Bob's game", "bob");
+  git.transaction([
+    { kind: "create", ref: "refs/heads/main", oid: main },
+    { kind: "create", ref: "refs/users/alice", oid: key },
+    { kind: "create", ref: "refs/users/bob", oid: key },
+    { kind: "create-symbolic", ref: "refs/keys/fingerprint", target: "refs/users/alice" },
+    { kind: "create", ref: "refs/heads/canonical/alice/bob/aaaaaaaaaaaaaaaa", oid: aliceGame },
+    {
+      kind: "create-symbolic",
+      ref: "refs/heads/games/alice/bob/aaaaaaaaaaaaaaaa",
+      target: "refs/heads/canonical/alice/bob/aaaaaaaaaaaaaaaa",
+    },
+    {
+      kind: "create-symbolic",
+      ref: "refs/heads/games/bob/alice/aaaaaaaaaaaaaaaa",
+      target: "refs/heads/canonical/alice/bob/aaaaaaaaaaaaaaaa",
+    },
+    { kind: "create", ref: "refs/heads/canonical/bob/carol/bbbbbbbbbbbbbbbb", oid: bobGame },
+    {
+      kind: "create-symbolic",
+      ref: "refs/heads/games/bob/carol/bbbbbbbbbbbbbbbb",
+      target: "refs/heads/canonical/bob/carol/bbbbbbbbbbbbbbbb",
+    },
+  ]);
+  inspect("symbolic-ref", "HEAD", "refs/heads/main");
   const previous = process.env.GIT_PROTOCOL;
   let upload, receive, version2;
   try {
@@ -36,9 +65,23 @@ test("transport processes stream Git advertisements and use only the requested p
     assert.ok(result.stdout.length > 0);
   }
   assert.doesNotMatch(results[0].stdout, /version 2/);
+  for (const ref of [
+    "refs/heads/main",
+    "refs/users/alice",
+    "refs/users/bob",
+    "refs/heads/games/alice/bob/aaaaaaaaaaaaaaaa",
+  ]) assert.match(results[0].stdout, new RegExp(ref));
+  for (const ref of [
+    "refs/keys/fingerprint",
+    "refs/heads/canonical/",
+    "refs/heads/games/bob/alice/aaaaaaaaaaaaaaaa",
+    "refs/heads/games/bob/carol/bbbbbbbbbbbbbbbb",
+  ]) assert.doesNotMatch(results[0].stdout, new RegExp(ref));
   assert.match(results[1].stdout, /report-status/);
+  assert.doesNotMatch(results[1].stdout, /refs\/(?:heads|users|keys)\//);
   assert.match(results[2].stdout, /version 2/);
   assert.throws(() => git.uploadPack({ player: "alice", protocol: "invalid" }), /Unsupported Git protocol/);
+  assert.throws(() => git.uploadPack({ player: "alice/../bob" }), /Invalid player/);
 });
 
 function fixture() {

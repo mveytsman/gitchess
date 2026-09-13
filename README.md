@@ -130,6 +130,13 @@ environment requests. Clients invoke the write-only `refs/new-game` and
 `refs/moves` action refs. Direct writes to identity, game, canonical, and normal
 branch refs are rejected.
 
+Ref advertisements are filtered for each authenticated player. Fetches and
+`git ls-remote` expose only the user list, `main`, and game aliases beginning
+with `games/<authenticated-user>/`. Key mappings, canonical refs, and other
+players' game aliases are hidden. Push advertisements hide all stored refs and
+permit only the `refs/new-game` and `refs/moves` action paths. These rules are
+passed directly to each Git transport subprocess, so they can vary by player.
+
 Run `npm run setup` after updating the code to install both hooks. The setup
 preserves existing users, games and the host key. Run the server yourself with
 `npm start`.

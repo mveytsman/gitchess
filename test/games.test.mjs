@@ -33,6 +33,9 @@ test("game actions create games and validated server-generated positions", () =>
   run("--git-dir", repo, "config", "--add", "receive.procReceiveRefs", "a:refs/moves");
   run("--git-dir", repo, "config", "receive.advertisePushOptions", "true");
   run("--git-dir", repo, "config", "receive.denyDeletes", "true");
+  run("--git-dir", repo, "config", "receive.hideRefs", "refs/");
+  run("--git-dir", repo, "config", "--add", "receive.hideRefs", "!refs/new-game");
+  run("--git-dir", repo, "config", "--add", "receive.hideRefs", "!refs/moves");
 
   const push = (player, destination, options = []) => spawnSync(
     "git",
@@ -112,7 +115,7 @@ test("game actions create games and validated server-generated positions", () =>
     ["bob", "refs/moves", ["move=Nf3", "color=white"], /Unsupported push option/],
     ["alice", "refs/new-game", ["opponent=bob"], /Missing push option: color/],
     ["alice", "refs/new-game", ["opponent=nobody", "color=white"], /Unknown player/],
-    ["alice", "refs/heads/main", [], /Push game actions|fetch first/],
+    ["alice", "refs/heads/main", [], /Push game actions|fetch first|hidden ref/],
   ]) {
     result = push(player, destination, options);
     assert.notEqual(result.status, 0, `${player} must not update ${destination}`);
