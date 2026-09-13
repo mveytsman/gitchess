@@ -9,9 +9,26 @@ if [[ ! -d "$repo" ]]; then
 fi
 
 git --git-dir="$repo" config receive.denyDeletes true
+git --git-dir="$repo" config receive.advertisePushOptions true
 git --git-dir="$repo" config --replace-all \
   receive.procReceiveRefs \
-  'am:refs/heads/games/'
+  'a:refs/new-game'
+git --git-dir="$repo" config --add \
+  receive.procReceiveRefs \
+  'a:refs/moves'
+
+if ! git --git-dir="$repo" show-ref --verify --quiet refs/heads/main; then
+  readme_oid="$(git --git-dir="$repo" hash-object -w "$root/repository/README.md")"
+  tree_oid="$(printf '100644 blob %s\tREADME.md\n' "$readme_oid" | git --git-dir="$repo" mktree)"
+  commit_oid="$(printf 'Welcome to ChessHub\n' | \
+    GIT_AUTHOR_NAME=ChessHub \
+    GIT_AUTHOR_EMAIL=server@chesshub \
+    GIT_COMMITTER_NAME=ChessHub \
+    GIT_COMMITTER_EMAIL=server@chesshub \
+    git --git-dir="$repo" commit-tree "$tree_oid")"
+  git --git-dir="$repo" update-ref refs/heads/main "$commit_oid"
+fi
+git --git-dir="$repo" symbolic-ref HEAD refs/heads/main
 
 printf '#!/usr/bin/env bash\nexec node %q\n' \
   "$root/dist/hooks/proc-receive.js" \

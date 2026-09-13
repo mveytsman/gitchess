@@ -1,6 +1,7 @@
 import { stdin, stdout } from "node:process";
 
 export type ReceiveUpdate = { oldOid: string; oid: string; ref: string };
+export type ReceiveResult = { ref: string };
 
 const flush = Symbol("flush");
 type Packet = Buffer | typeof flush;
@@ -114,18 +115,28 @@ async function readSection(reader: PacketReader): Promise<Buffer[]> {
 }
 
 // The callback applies the entire batch or throws; framing and status stay here.
-export async function procReceive(apply: (updates: ReceiveUpdate[]) => void | Promise<void>): Promise<void> {
+export async function procReceive(
+  apply: (
+    updates: ReceiveUpdate[],
+    pushOptions: string[],
+  ) => ReceiveResult[] | Promise<ReceiveResult[]>,
+): Promise<void> {
   const reader = new PacketReader();
   const negotiation = await readSection(reader);
   debug(`received ${negotiation.length} negotiation packet(s)`);
   const [version] = negotiation;
-  if (!version?.toString("utf8").startsWith("version=1")) {
+  const offer = version?.toString("utf8");
+  debug(`version offer: ${JSON.stringify(offer)}`);
+  if (!offer?.startsWith("version=1")) {
     throw new Error(
       `receive-pack did not offer proc-receive protocol v1: ${version?.toString("utf8")}`,
     );
   }
 
-  writePacket("version=1\0");
+  const features = new Set((offer.split("\0", 2)[1] ?? "").trim().split(/\s+/).filter(Boolean));
+  const acceptsPushOptions = features.has("push-options");
+
+  writePacket(`version=1\0${acceptsPushOptions ? "push-options" : ""}`);
   writeFlush();
   debug("sent version response");
 
@@ -138,9 +149,15 @@ export async function procReceive(apply: (updates: ReceiveUpdate[]) => void | Pr
     }
     return { oldOid, oid, ref };
   });
+  const pushOptions = acceptsPushOptions
+    ? (await readSection(reader)).map((option) => option.toString("utf8"))
+    : [];
+  debug(`received ${pushOptions.length} push option(s)`);
   try {
-    await apply(updates);
-    for (const { ref } of updates) writePacket(`ok ${ref}`);
+    const results = await apply(updates, pushOptions);
+    for (const result of results) {
+      writePacket(`ok ${result.ref}`);
+    }
   } catch (error) {
     const reason = (error instanceof Error ? error.message : String(error)).replace(/[\r\n\0]/g, " ");
     for (const { ref } of updates) writePacket(`ng ${ref} ${reason}`);

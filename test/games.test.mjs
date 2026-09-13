@@ -5,69 +5,118 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { GitRepository } from "../dist/git.js";
-import { gameUpdate } from "../dist/games.js";
 
-test("game pushes create symbolic aliases, update from either player, and enforce ownership", () => {
+test("game actions create games and validated server-generated positions", () => {
   const dir = mkdtempSync(`${tmpdir()}/chesshub-games-`);
   const repo = `${dir}/repo.git`, client = `${dir}/client`;
-  const run = (...args) => execFileSync("git", args, { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }).trim();
+  const run = (...args) => execFileSync("git", args, {
+    encoding: "utf8", stdio: ["pipe", "pipe", "pipe"],
+  }).trim();
   run("init", "--bare", repo);
   run("init", client);
   run("-C", client, "config", "user.name", "Test");
   run("-C", client, "config", "user.email", "test@example.com");
+  run("-C", client, "commit", "--allow-empty", "-m", "client anchor");
   const git = new GitRepository(repo);
   const key = git.writeBlob("test key");
-  git.transaction(["alice", "bob", "eve", "_chessbot"].map(name => ({ kind: "create", ref: `refs/users/${name}`, oid: key })));
+  const readme = git.writeBlob("# ChessHub\n");
+  const main = git.createCommit(git.writeTree([{ name: "README.md", oid: readme }]), [], "Welcome", "alice");
+  git.transaction(["alice", "bob", "eve", "_chessbot"].map(name =>
+    ({ kind: "create", ref: `refs/users/${name}`, oid: key })).concat([
+      { kind: "create", ref: "refs/heads/main", oid: main },
+    ]));
   for (const name of ["pre-receive", "proc-receive"]) {
     const hook = fileURLToPath(new URL(`../dist/hooks/${name}.js`, import.meta.url));
     writeFileSync(`${repo}/hooks/${name}`, `#!/bin/sh\nexec '${process.execPath}' '${hook}'\n`, { mode: 0o755 });
   }
-  run("--git-dir", repo, "config", "receive.procReceiveRefs", "am:refs/heads/games/");
+  run("--git-dir", repo, "config", "receive.procReceiveRefs", "a:refs/new-game");
+  run("--git-dir", repo, "config", "--add", "receive.procReceiveRefs", "a:refs/moves");
+  run("--git-dir", repo, "config", "receive.advertisePushOptions", "true");
   run("--git-dir", repo, "config", "receive.denyDeletes", "true");
-  const commit = () => {
-    run("-C", client, "commit", "--allow-empty", "-m", "move");
-    return run("-C", client, "rev-parse", "HEAD");
+
+  const push = (player, destination, options = []) => spawnSync(
+    "git",
+    ["-C", client, "push", ...options.flatMap(option => ["-o", option]), repo, `HEAD:${destination}`],
+    {
+      encoding: "utf8", timeout: 10000,
+      env: { ...process.env, CHESSHUB_PLAYER: player },
+    },
+  );
+  const oid = ref => run("--git-dir", repo, "rev-parse", ref);
+  const sync = ref => {
+    run("-C", client, "fetch", repo, ref);
+    run("-C", client, "checkout", "-B", "game", "FETCH_HEAD");
   };
-  const push = (player, ...refs) => spawnSync("git", ["-C", client, "push", repo, ...refs], {
-    encoding: "utf8", timeout: 10000,
-    env: { ...process.env, CHESSHUB_PLAYER: player },
-  });
-  const alice = "refs/heads/games/alice/bob/demo";
-  const bob = "refs/heads/games/bob/alice/demo";
-  const canonical = "refs/heads/canonical/alice/bob/demo";
-  const first = commit();
-  let result = push("alice", `HEAD:${alice}`);
+
+  let result = push("alice", "refs/new-game", ["opponent=bob", "color=black"]);
   assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /ChessHub: created games\/alice\/bob\/[a-f0-9]{16}/);
+  const canonical = run(
+    "--git-dir", repo, "for-each-ref", "--format=%(refname)", "refs/heads/canonical",
+  );
+  const match = /^refs\/heads\/canonical\/bob\/alice\/([a-f0-9]{16})$/.exec(canonical);
+  assert.ok(match, canonical);
+  const id = match[1];
+  const alice = `refs/heads/games/alice/bob/${id}`;
+  const bob = `refs/heads/games/bob/alice/${id}`;
+  const initial = oid(canonical);
+  assert.equal(git.hasRef("refs/new-game"), false);
+  assert.equal(git.readCommit(initial).parents.length, 0);
+  assert.equal(git.readCommit(initial).author, "alice");
+  assert.equal(
+    git.readCommit(initial).message,
+    `Start game ${id}\n\nalice challenged bob and chose Black.\n`,
+  );
   for (const alias of [alice, bob]) assert.equal(git.readSymbolicRef(alias), canonical);
-  assert.equal(run("--git-dir", repo, "rev-parse", canonical), first);
-  const second = commit();
-  result = push("bob", `HEAD:${bob}`);
+  assert.equal(git.readFile(initial, "position.fen").toString(),
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\n");
+  assert.equal(git.readFile(initial, "README.md").toString(), "# ChessHub\n");
+  assert.equal(oid(`${initial}:README.md`), oid("refs/heads/main:README.md"));
+  const png = git.readFile(initial, "position.png");
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+
+  sync(alice);
+  result = push("alice", "refs/moves", ["move=e4"]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /It is bob's turn/);
+  assert.equal(oid(canonical), initial);
+
+  result = push("bob", "refs/moves", ["move=e4"]);
   assert.equal(result.status, 0, result.stderr);
-  for (const ref of [alice, bob, canonical]) assert.equal(run("--git-dir", repo, "rev-parse", ref), second);
-  assert.throws(() => git.transaction(gameUpdate(git, alice, first, second, "alice")));
-  commit();
-  for (const [player, ref] of [
-    ["eve", alice], ["", alice], ["alice", bob], ["alice", canonical],
-    ["alice", "refs/heads/main"], ["alice", "refs/heads/games/alice/bob"],
-    ["alice", "refs/heads/games/alice/missing/demo"], ["alice", "refs/heads/games/alice/alice/demo"],
+  assert.equal(git.hasRef("refs/moves"), false);
+  const state1 = oid(canonical);
+  assert.equal(run("--git-dir", repo, "rev-parse", `${state1}^`), initial);
+  assert.equal(git.readCommit(state1).author, "bob");
+  assert.equal(git.readCommit(state1).message, "e4\n");
+  assert.equal(oid(`${state1}:README.md`), oid(`${initial}:README.md`));
+  assert.equal(git.readFile(state1, "position.fen").toString(),
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1\n");
+
+  result = push("alice", "refs/moves", ["move=e5"]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /No current game has that position/);
+  sync(alice);
+  result = push("alice", "refs/moves", ["move=e5"]);
+  assert.equal(result.status, 0, result.stderr);
+  const state2 = oid(canonical);
+  assert.equal(git.readCommit(state2).author, "alice");
+  assert.equal(oid(`${state2}:README.md`), oid(`${initial}:README.md`));
+  assert.equal(git.readFile(state2, "position.fen").toString(),
+    "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2\n");
+
+  sync(bob);
+  for (const [player, destination, options, error] of [
+    ["eve", "refs/moves", ["move=Nf3"], /not a player/],
+    ["bob", "refs/moves", ["move=e5"], /Illegal move/],
+    ["bob", "refs/moves", [], /Missing push option: move/],
+    ["bob", "refs/moves", ["move=Nf3", "color=white"], /Unsupported push option/],
+    ["alice", "refs/new-game", ["opponent=bob"], /Missing push option: color/],
+    ["alice", "refs/new-game", ["opponent=nobody", "color=white"], /Unknown player/],
+    ["alice", "refs/heads/main", [], /Push game actions|fetch first/],
   ]) {
-    result = push(player, `HEAD:${ref}`);
-    assert.notEqual(result.status, 0, `${player} must not write ${ref}`);
+    result = push(player, destination, options);
+    assert.notEqual(result.status, 0, `${player} must not update ${destination}`);
+    assert.match(result.stderr, error);
+    assert.equal(oid(canonical), state2);
   }
-  result = push("alice", `:${alice}`);
-  assert.notEqual(result.status, 0);
-  assert.equal(git.readSymbolicRef(alice), canonical);
-  // One bad game prevents the other game's refs from being created.
-  result = push("alice", "HEAD:refs/heads/games/alice/bob/new", "HEAD:refs/heads/games/alice/missing/new");
-  assert.notEqual(result.status, 0);
-  assert.equal(git.hasRef("refs/heads/canonical/alice/bob/new"), false);
-  assert.equal(git.hasRef("refs/heads/games/alice/bob/new"), false);
-  assert.equal(run("--git-dir", repo, "rev-parse", canonical), second);
-  result = push("alice", "HEAD:refs/heads/games/alice/_chessbot/bot-game");
-  assert.equal(result.status, 0, result.stderr);
-  commit();
-  result = push("_chessbot", "HEAD:refs/heads/games/_chessbot/alice/bot-game");
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(git.readSymbolicRef("refs/heads/games/alice/_chessbot/bot-game"),
-    "refs/heads/canonical/_chessbot/alice/bot-game");
 });

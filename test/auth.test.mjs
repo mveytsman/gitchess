@@ -165,7 +165,7 @@ test("users are discoverable and fetchable but identity pushes are rejected", ()
     // Existing identical refs may be skipped by Git; new refs exercise the hook.
     if (ref.endsWith("/new")) {
       assert.notEqual(push.status, 0);
-      assert.match(push.stderr, /Use games\//);
+      assert.match(push.stderr, /Authentication is required|Push game actions/);
     }
   }
   const deletion = spawnSync("git", ["-C", client, "push", repo, ":refs/users/alice"], { encoding: "utf8" });

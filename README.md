@@ -30,9 +30,9 @@ and registration; a conflicting identity causes setup to fail rather than
 overwrite it. Underscore-prefixed usernames are reserved and cannot be chosen
 during interactive signup.
 
-You can start a game at `games/<you>/_chessbot/<id>`. This provisions the bot's
-identity only—it does not yet run a bot or generate chess moves. For future bot
-Git commands, select its key with
+You can challenge `_chessbot`; ChessHub generates the game ID. This provisions
+the bot's identity only—it does not yet run a bot or generate chess moves. For
+future bot Git commands, select its key with
 `GIT_SSH_COMMAND='ssh -i /absolute/path/to/var/chessbot_ed25519 -o IdentitiesOnly=yes'`.
 
 From another terminal:
@@ -57,9 +57,8 @@ Choose a ChessHub username: alice
 
 Choose 1–32 lowercase letters, digits, underscores or hyphens, starting with a
 letter. Invalid or taken names are prompted again, up to five attempts. Signup
-completes before Git's transfer starts, so the same clone continues afterward.
-With no game branches yet, Git may warn that the repository appears empty or
-has no usable default branch; user discovery still works.
+completes before Git's transfer starts, so the same clone continues afterward
+and checks out the repository's player guide.
 
 This uses SSH keyboard-interactive authentication after public-key verification.
 It needs an interactive terminal and a client supporting that method (such as
@@ -127,51 +126,68 @@ Both ref prefixes are publicly readable for discovery. The pre-receive hook
 rejects all client creation, modification and deletion of identity refs; only
 server-side registration writes them. The SSH server passes the authenticated
 name to Git and its hooks as `CHESSHUB_PLAYER`; clients cannot set it via SSH
-environment requests. Pushes may only write game aliases whose first username
-matches that authenticated name. Direct canonical writes and all other ref paths
-are rejected. Chess rules and turn authorization are not implemented yet.
+environment requests. Clients invoke the write-only `refs/new-game` and
+`refs/moves` action refs. Direct writes to identity, game, canonical, and normal
+branch refs are rejected.
 
 Run `npm run setup` after updating the code to install both hooks. The setup
 preserves existing users, games and the host key. Run the server yourself with
 `npm start`.
 
+The repository's `main` branch is initialized with a player-facing README from
+`repository/README.md`. It explains how to discover players, create a game, and
+make moves, so a fresh clone contains its own instructions.
+
 ### Game refs
 
-Create a local branch using your username, a registered opponent, and a game ID:
+Create a game by naming an opponent and choosing your color. The server assigns
+a random 16-character hexadecimal game ID:
 
 ```sh
-git switch -c games/alice/bob/demo
-# Make a commit, then:
-git push -u origin games/alice/bob/demo
+git push -o opponent=bob -o color=black origin HEAD:refs/new-game
 ```
 
-IDs contain 1–64 letters, digits, underscores or hyphens. Each pair can have
-multiple games with different IDs; playing yourself is not supported.
-The server creates these refs together:
+`refs/new-game` is a pseudo-ref: proc-receive handles the action but never stores
+that ref. The pushed `HEAD` merely gives Git an object to send; it does not become
+part of the game. The server creates a unique root commit containing the initial
+`position.fen` and `position.png`. It also reuses the exact `README.md` blob from
+`main`, so the player guide is available on every game branch without a second
+copy to maintain. The server then prints the generated branch and checkout
+command. For Alice choosing Black, the refs look like:
 
 ```text
-refs/heads/games/alice/bob/demo -> refs/heads/canonical/alice/bob/demo
-refs/heads/games/bob/alice/demo -> refs/heads/canonical/alice/bob/demo
+refs/heads/games/alice/bob/0123456789abcdef -> refs/heads/canonical/bob/alice/0123456789abcdef
+refs/heads/games/bob/alice/0123456789abcdef -> refs/heads/canonical/bob/alice/0123456789abcdef
 ```
 
-The canonical ref stores the commit ID and uses sorted usernames. Both game
-aliases are symbolic refs on the server. Bob can fetch and check out his alias:
+The canonical path is ordered White then Black. Each player's alias is ordered
+self then opponent, and both symbolic aliases point to the same canonical ref.
+Fetch the server-created commit and check out the alias printed by the push:
 
 ```sh
 git fetch origin
-git switch --track origin/games/bob/alice/demo
+git switch --track origin/games/alice/bob/0123456789abcdef
 ```
 
-Clients see ordinary branches; the symbolic relationship stays server-side.
-Each player pushes their own branch, and the hook updates the shared canonical
-ref, checking its previous commit ID to reject concurrent stale updates.
-Fetch/pull before continuing after the other player pushes.
+Make a move by sending strict SAN as a push option to the shared action ref:
 
-Setup uses `am:refs/heads/games/` to route both creation and modification through
-[proc-receive](https://git-scm.com/docs/githooks#_proc_receive).
-All game updates in a push share one ref transaction. Game deletion is rejected.
-This is ref routing and ownership authorization only: either participant can
-currently submit arbitrary commits, including forced history changes.
+```sh
+git push -o move=e4 origin HEAD:refs/moves
+git pull --ff-only
+```
+
+`HEAD` identifies the exact game and position because the unique canonical game
+ref points to that commit. The server rejects stale positions, wrong turns, and
+illegal moves. For a legal move it creates a child position commit whose author
+is the authenticated mover and whose committer is ChessHub. The client then
+downloads that server-created object with an ordinary fast-forward pull. No
+client-side proposal commit is needed.
+
+Setup advertises push options and routes additions of `refs/new-game` and
+`refs/moves` through
+[proc-receive](https://git-scm.com/docs/githooks#_proc_receive). Both remain
+absent, allowing every action to look like a new pseudo-ref creation. Exactly one
+game action is accepted per push, and stored refs cannot be changed by clients.
 
 Optional configuration:
 

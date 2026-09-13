@@ -15,6 +15,7 @@
     "typescript": "^5.9.0"
   },
   "dependencies": {
+    "chess.js": "^1.4.0",
     "ssh2": "^1.17.0"
   }
 }
