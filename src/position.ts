@@ -4,7 +4,7 @@ import { Chess, type Color, type PieceSymbol } from "chess.js";
 
 export const INITIAL_FEN = new Chess().fen();
 
-const SIZE = 1024;
+const SIZE = 512;
 const SQUARE_SIZE = SIZE / 8;
 const PIECES = [
   "wP", "wN", "wB", "wR", "wQ", "wK",
@@ -57,7 +57,7 @@ export function renderPositionSvg(fen: string): string {
 
 export function renderPositionPng(svg: string): Buffer {
   return new Resvg(svg, {
-    fitTo: { mode: "width", value: SIZE },
+    fitTo: { mode: "width", value: 2*SIZE },
     font: { loadSystemFonts: false },
   }).render().asPng();
 }
