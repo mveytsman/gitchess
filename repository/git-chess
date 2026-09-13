@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ./git-chess install
+  git chess players
+  git chess challenge <opponent> [--black]
+  git chess move <SAN>
+EOF
+}
+
+require_repository() {
+  git rev-parse --show-toplevel >/dev/null 2>&1 || {
+    printf 'git-chess must be run inside a Git working tree\n' >&2
+    exit 1
+  }
+}
+
+command="${1:-}"
+case "$command" in
+  install)
+    [[ $# -eq 1 ]] || { usage >&2; exit 1; }
+    require_repository
+    git config --local alias.chess '!./git-chess'
+    printf 'Installed: use git chess <command>\n'
+    ;;
+
+  players)
+    [[ $# -eq 1 ]] || { usage >&2; exit 1; }
+    require_repository
+    git ls-remote origin 'refs/users/*' | sed 's|.*refs/users/||'
+    ;;
+
+  challenge)
+    [[ $# -eq 2 || $# -eq 3 ]] || { usage >&2; exit 1; }
+    require_repository
+    opponent="$2"
+    color=white
+    if [[ $# -eq 3 ]]; then
+      [[ "$3" == --black ]] || { usage >&2; exit 1; }
+      color=black
+    fi
+
+    set +e
+    output="$(git push -o "opponent=$opponent" -o "color=$color" origin HEAD:refs/new-game 2>&1)"
+    status=$?
+    set -e
+    printf '%s\n' "$output" >&2
+    [[ $status -eq 0 ]] || exit "$status"
+
+    game_ref="$(printf '%s\n' "$output" |
+      sed -n 's|.*gitchess: created \(games/[a-z_][a-z0-9_-]*/[a-z_][a-z0-9_-]*/[a-f0-9][a-f0-9]*\).*|\1|p' |
+      tail -n 1)"
+    if [[ -z "$game_ref" ]]; then
+      printf 'git-chess could not find the generated game branch in the server response\n' >&2
+      exit 1
+    fi
+    git fetch origin "refs/heads/$game_ref:refs/remotes/origin/$game_ref"
+    git switch --track -c "$game_ref" "origin/$game_ref"
+    ;;
+
+  move)
+    [[ $# -eq 2 ]] || { usage >&2; exit 1; }
+    require_repository
+    git pull --ff-only
+    git push -o "move=$2" origin HEAD:refs/moves
+    git pull --ff-only
+    ;;
+
+  help|-h|--help)
+    usage
+    ;;
+
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac

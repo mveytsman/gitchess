@@ -3,7 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 type TransportOptions = { player: string; protocol?: string };
 
 export type GitCommit = { tree: string; parents: string[]; author: string; message: string };
-export type TreeEntry = { name: string; oid: string };
+export type TreeEntry = { name: string; oid: string; mode?: "100644" | "100755" };
 
 export type RefOperation =
   | { kind: "create"; ref: string; oid: string }
@@ -162,10 +162,10 @@ export class GitRepository {
   }
 
   writeTree(entries: readonly TreeEntry[]): string {
-    const lines = [...entries].sort((a, b) => a.name.localeCompare(b.name)).map(({ name, oid }) => {
+    const lines = [...entries].sort((a, b) => a.name.localeCompare(b.name)).map(({ name, oid, mode = "100644" }) => {
       if (!/^[A-Za-z0-9.-]+$/.test(name)) throw new Error(`Invalid file name: ${name}`);
       this.validateOid(oid);
-      return `100644 blob ${oid}\t${name}`;
+      return `${mode} blob ${oid}\t${name}`;
     });
     return this.run(["mktree"], `${lines.join("\n")}${lines.length ? "\n" : ""}`).stdout.trim();
   }

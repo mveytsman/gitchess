@@ -18,10 +18,13 @@ git --git-dir="$repo" config --add \
   'a:refs/moves'
 
 readme_oid="$(git --git-dir="$repo" hash-object -w "$root/repository/README.md")"
+command_oid="$(git --git-dir="$repo" hash-object -w "$root/repository/git-chess")"
 current_main="$(git --git-dir="$repo" rev-parse --verify refs/heads/main 2>/dev/null || true)"
 current_readme="$(git --git-dir="$repo" rev-parse --verify refs/heads/main:README.md 2>/dev/null || true)"
-if [[ "$current_readme" != "$readme_oid" ]]; then
-  tree_oid="$(printf '100644 blob %s\tREADME.md\n' "$readme_oid" | git --git-dir="$repo" mktree)"
+current_command="$(git --git-dir="$repo" rev-parse --verify refs/heads/main:git-chess 2>/dev/null || true)"
+if [[ "$current_readme" != "$readme_oid" || "$current_command" != "$command_oid" ]]; then
+  tree_oid="$(printf '100644 blob %s\tREADME.md\n100755 blob %s\tgit-chess\n' \
+    "$readme_oid" "$command_oid" | git --git-dir="$repo" mktree)"
   message='Welcome to gitchess'
   if [[ -n "$current_main" ]]; then
     message='Update the gitchess player guide'

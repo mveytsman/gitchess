@@ -42,6 +42,14 @@ git clone ssh://git@localhost:2222/chess.git chess
 cd chess
 ```
 
+To configure the repository-local `git chess` alias as part of cloning:
+
+```sh
+git clone -c alias.chess='!./git-chess' \
+  ssh://git@localhost:2222/chess.git chess
+cd chess
+```
+
 SSH will ask you to trust the local server's host key on the first connection.
 If your key isn't selected automatically, use
 `GIT_SSH_COMMAND='ssh -i /path/to/private-key -o IdentitiesOnly=yes'` with the Git
@@ -75,7 +83,13 @@ yet; a different key is a new identity.
 
 ## Discover players
 
-From your clone, list registered players without downloading their keys:
+With the repository-local command installed, list registered players with:
+
+```sh
+git chess players
+```
+
+Its underlying Git command lists the same users without downloading their keys:
 
 ```sh
 git ls-remote origin 'refs/users/*'
@@ -141,26 +155,54 @@ Run `npm run setup` after updating the code to install both hooks. The setup
 preserves existing users, games and the host key. Run the server yourself with
 `npm start`.
 
-The repository's `main` branch is initialized with a player-facing README from
-`repository/README.md`. It explains how to discover players, create a game, and
-make moves, so a fresh clone contains its own instructions.
+The repository's `main` branch is initialized with a player-facing README and
+Bash client from `repository/`. A fresh clone contains its own instructions and
+can explicitly enable the repository-local command:
+
+```sh
+./git-chess install
+```
+
+This installs a local `git chess` alias for that clone; cloning a repository
+never executes or installs its files automatically.
+
+The underlying Git configuration command is:
+
+```sh
+git config --local alias.chess '!./git-chess'
+```
 
 ### Game refs
 
-Create a game by naming an opponent and choosing your color. The server assigns
-a random 16-character hexadecimal game ID:
+Create a game by naming an opponent. You play White by default; pass `--black`
+to play Black. The server assigns a random 16-character hexadecimal game ID,
+and the command fetches and switches to the resulting branch:
 
 ```sh
-git push -o opponent=bob -o color=black origin HEAD:refs/new-game
+git chess challenge bob
+git chess challenge bob --black
 ```
+
+The underlying commands for a White challenge are:
+
+```sh
+git push -o opponent=bob -o color=white origin HEAD:refs/new-game
+git fetch origin \
+  refs/heads/games/alice/bob/<generated-id>:refs/remotes/origin/games/alice/bob/<generated-id>
+git switch --track -c games/alice/bob/<generated-id> \
+  origin/games/alice/bob/<generated-id>
+```
+
+Choosing Black changes the push option to `color=black`. The wrapper extracts
+the generated ID from the server response before running the fetch and switch.
 
 `refs/new-game` is a pseudo-ref: proc-receive handles the action but never stores
 that ref. The pushed `HEAD` merely gives Git an object to send; it does not become
 part of the game. The server creates a unique root commit containing the initial
-`position.fen` and `position.png`. It also reuses the exact `README.md` blob from
-`main`, so the player guide is available on every game branch without a second
-copy to maintain. The server then prints the generated branch and checkout
-command. For Alice choosing Black, the refs look like:
+`position.fen` and `position.png`. It also reuses the exact `README.md` and
+executable `git-chess` blobs from `main`, so both are available on every game
+branch without second copies to maintain. The server then prints the generated
+branch and checkout command. For Alice choosing Black, the refs look like:
 
 ```text
 refs/heads/games/alice/bob/0123456789abcdef -> refs/heads/canonical/bob/alice/0123456789abcdef
@@ -176,9 +218,17 @@ git fetch origin
 git switch --track origin/games/alice/bob/0123456789abcdef
 ```
 
-Make a move by sending strict SAN as a push option to the shared action ref:
+Make a move using strict SAN. The command fast-forward pulls before the action,
+pushes the move, and pulls the server-generated result:
 
 ```sh
+git chess move e4
+```
+
+The underlying Git commands are:
+
+```sh
+git pull --ff-only
 git push -o move=e4 origin HEAD:refs/moves
 git pull --ff-only
 ```
@@ -189,6 +239,17 @@ illegal moves. For a legal move it creates a child position commit whose author
 is the authenticated mover and whose committer is gitchess. The client then
 downloads that server-created object with an ordinary fast-forward pull. No
 client-side proposal commit is needed.
+
+The Bash client is intentionally thin. Underneath, `challenge` pushes
+`opponent` and `color` options to `refs/new-game`, while `move` pushes a `move`
+option to `refs/moves`. `git chess players` lists the public user refs.
+
+To inspect refs directly:
+
+```sh
+git for-each-ref      # all local refs
+git ls-remote origin  # all refs the server exposes to you
+```
 
 Setup advertises push options and routes additions of `refs/new-game` and
 `refs/moves` through

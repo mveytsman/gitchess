@@ -52,16 +52,24 @@ export function authorizeGameAction(ref: string, oid: string, player: string | u
   if (/^0+$/.test(oid)) throw new Error("Game deletion is not supported");
 }
 
-function positionTree(git: GitRepository, fen: string, readmeOid: string): string {
+type RepositoryFiles = { readme: string; command: string };
+
+function positionTree(git: GitRepository, fen: string, files: RepositoryFiles): string {
   return git.writeTree([
-    { name: "README.md", oid: readmeOid },
+    { name: "README.md", oid: files.readme },
+    { name: "git-chess", oid: files.command, mode: "100755" },
     { name: "position.fen", oid: git.writeBlob(`${fen}\n`) },
     { name: "position.png", oid: git.writeBlob(renderPosition(fen)) },
   ]);
 }
 
-function readmeFrom(git: GitRepository, commit: string): string {
-  return git.writeBlob(git.readFile(commit, "README.md"));
+function repositoryFiles(git: GitRepository): RepositoryFiles {
+  const mainOid = git.readDirectRef("refs/heads/main");
+  if (!mainOid) throw new Error("gitchess's main branch has not been initialized");
+  return {
+    readme: git.writeBlob(git.readFile(mainOid, "README.md")),
+    command: git.writeBlob(git.readFile(mainOid, "git-chess")),
+  };
 }
 
 export function createGame(
@@ -86,10 +94,8 @@ export function createGame(
   const game = gameRefs(white, black, id);
   const chosenColor = color === "white" ? "White" : "Black";
   const message = `Start game ${id}\n\n${creator} challenged ${opponent} and chose ${chosenColor}.`;
-  const mainOid = git.readDirectRef("refs/heads/main");
-  if (!mainOid) throw new Error("gitchess's main branch has not been initialized");
   const newOid = git.createCommit(
-    positionTree(git, INITIAL_FEN, readmeFrom(git, mainOid)),
+    positionTree(git, INITIAL_FEN, repositoryFiles(git)),
     [],
     message,
     creator,
@@ -143,7 +149,7 @@ export function gameMove(
   }
 
   const newOid = git.createCommit(
-    positionTree(git, chess.fen(), readmeFrom(git, currentOid)),
+    positionTree(git, chess.fen(), repositoryFiles(git)),
     [currentOid],
     move.san,
     authenticatedPlayer,
