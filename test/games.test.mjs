@@ -100,6 +100,7 @@ test("game actions create games and validated server-generated positions", () =>
     `Start game ${id}\n\nalice challenged bob and chose Black.\n`,
   );
   for (const index of [alice, bob]) assert.equal(git.readSymbolicRef(index), gameRef);
+  assert.equal(git.readFile(initial, ".gitchess-version").toString(), "0.1\n");
   assert.equal(git.readFile(initial, "position.fen").toString(),
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\n");
   assert.equal(git.readFile(initial, "README.md").toString(), "# gitchess\n");
@@ -130,6 +131,7 @@ test("game actions create games and validated server-generated positions", () =>
   assert.equal(oid(`${state1}:README.md`), oid(`${initial}:README.md`));
   assert.equal(git.readFile(state1, "position.fen").toString(),
     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1\n");
+  assert.equal(oid(`${state1}:.gitchess-version`), oid(`${initial}:.gitchess-version`));
   assert.notEqual(oid(`${state1}:position.svg`), oid(`${initial}:position.svg`));
   assert.notEqual(oid(`${state1}:position.png`), oid(`${initial}:position.png`));
 

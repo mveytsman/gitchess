@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { Chess } from "chess.js";
+import { buildGameTree } from "./game-tree.js";
 import { GitRepository, type RefOperation } from "./git.js";
-import { INITIAL_FEN, renderPosition } from "./position.js";
+import { INITIAL_FEN } from "./position.js";
 import { Users } from "./users.js";
 
 const USERNAME = "[a-z_][a-z0-9_-]{0,31}";
@@ -53,28 +54,7 @@ export function authorizeGameAction(ref: string, oid: string, player: string | u
   if (/^0+$/.test(oid)) throw new Error("Game deletion is not supported");
 }
 
-type RepositoryFiles = { readme: string; command: string };
 export type QueuedBotGame = { ref: string; oid: string; fen: string };
-
-function positionTree(git: GitRepository, fen: string, files: RepositoryFiles): string {
-  const position = renderPosition(fen);
-  return git.writeTree([
-    { name: "README.md", oid: files.readme },
-    { name: "git-chess", oid: files.command, mode: "100755" },
-    { name: "position.fen", oid: git.writeBlob(`${fen}\n`) },
-    { name: "position.svg", oid: git.writeBlob(position.svg) },
-    { name: "position.png", oid: git.writeBlob(position.png) },
-  ]);
-}
-
-function repositoryFiles(git: GitRepository): RepositoryFiles {
-  const mainOid = git.readDirectRef("refs/heads/main");
-  if (!mainOid) throw new Error("gitchess's main branch has not been initialized");
-  return {
-    readme: git.writeBlob(git.readFile(mainOid, "README.md")),
-    command: git.writeBlob(git.readFile(mainOid, "git-chess")),
-  };
-}
 
 function position(git: GitRepository, oid: string): Chess {
   return new Chess(git.readFile(oid, "position.fen").toString("utf8").trimEnd());
@@ -123,9 +103,8 @@ export function createGame(
   const game = gameRefs(white, black, id);
   const chosenColor = color === "white" ? "White" : "Black";
   const message = `Start game ${id}\n\n${creator} challenged ${opponent} and chose ${chosenColor}.`;
-  const files = repositoryFiles(git);
   const newOid = git.createCommit(
-    positionTree(git, INITIAL_FEN, files),
+    buildGameTree(git, INITIAL_FEN),
     [],
     message,
     creator,
@@ -173,9 +152,8 @@ export function gameMove(
     throw new Error(`Illegal move: ${moveText}`);
   }
 
-  const files = repositoryFiles(git);
   const newOid = git.createCommit(
-    positionTree(git, chess.fen(), files),
+    buildGameTree(git, chess.fen()),
     [currentOid],
     move.san,
     authenticatedPlayer,

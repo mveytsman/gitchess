@@ -203,8 +203,9 @@ the generated ID from the server response before running the fetch and switch.
 `refs/new-game` is a pseudo-ref: proc-receive handles the action but never stores
 that ref. The pushed `HEAD` merely gives Git an object to send; it does not become
 part of the game. The server creates a unique root commit containing the initial
-`position.fen`, `position.svg`, and `position.png`. For Alice choosing Black,
-the refs look like:
+`.gitchess-version`, `position.fen`, `position.svg`, and `position.png`. The
+version marker currently contains `0.1` and identifies the game-tree layout.
+For Alice choosing Black, the refs look like:
 
 ```text
 refs/heads/games/bob/alice/0123456789abcdef

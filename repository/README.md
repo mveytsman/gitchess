@@ -1,9 +1,10 @@
 # gitchess
 
 This repository is a chess board. gitchess stores every accepted position as a
-Git commit containing this guide, the `git-chess` command, `position.fen`,
-`position.svg`, and `position.png`. The SVG and PNG are two renderings of the
-same FEN position; the SVG uses the
+Git commit containing `.gitchess-version`, this guide, the `git-chess` command,
+`position.fen`, `position.svg`, and `position.png`. The version file identifies
+the game-tree layout; it currently contains `0.1`. The SVG and PNG are two
+renderings of the same FEN position; the SVG uses the
 [Chessnut pieces](https://github.com/LexLuengas/chessnut-pieces) by Alexis
 Luengas, licensed under Apache 2.0.
 
