@@ -145,7 +145,7 @@ export function gameMove(
   const chess = new Chess(fen);
   let move;
   try {
-    move = chess.move(moveText, { strict: true });
+    move = chess.move(moveText, { strict: false });
   } catch {
     throw new Error(`Illegal move: ${moveText}`);
   }

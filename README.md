@@ -221,7 +221,7 @@ git fetch origin
 git switch --track origin/games/bob/alice/0123456789abcdef
 ```
 
-Make a move using strict SAN. The command fast-forward pulls before the action,
+Make a move using SAN. The command fast-forward pulls before the action,
 pushes the move, and pulls the server-generated result:
 
 ```sh

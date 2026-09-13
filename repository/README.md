@@ -94,7 +94,7 @@ games remain visible.
 
 ## Make a move
 
-Send one move in strict standard algebraic notation (SAN):
+Send one move in standard algebraic notation (SAN):
 
 ```sh
 git chess move e4
