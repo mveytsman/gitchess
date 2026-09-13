@@ -1,5 +1,5 @@
 {
-  "name": "chesshub",
+  "name": "gitchess",
   "private": true,
   "type": "module",
   "scripts": {

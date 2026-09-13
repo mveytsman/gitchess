@@ -1,6 +1,6 @@
-# ChessHub
+# gitchess
 
-This repository is a chess board. ChessHub stores every accepted position as a
+This repository is a chess board. gitchess stores every accepted position as a
 Git commit containing this guide, `position.fen`, and `position.png`.
 
 ## Find an opponent
@@ -19,7 +19,7 @@ Challenge a player and choose whether you play White or Black:
 git push -o opponent=bob -o color=white origin HEAD:refs/new-game
 ```
 
-ChessHub prints the generated game branch. Download it and switch to it using
+gitchess prints the generated game branch. Download it and switch to it using
 the command shown in the response. It will look like:
 
 ```sh

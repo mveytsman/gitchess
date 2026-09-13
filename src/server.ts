@@ -10,13 +10,13 @@ const { Server } = ssh2;
 
 // Compiled entry point lives in dist/; repository paths do not depend on cwd.
 const root = fileURLToPath(new URL("../", import.meta.url));
-const repo = resolve(process.env.CHESSHUB_REPO ?? `${root}/var/chess.git`);
+const repo = resolve(process.env.GITCHESS_REPO ?? `${root}/var/chess.git`);
 const hostKeyPath = resolve(
-  process.env.CHESSHUB_HOST_KEY ?? `${root}/var/ssh_host_ed25519`,
+  process.env.GITCHESS_HOST_KEY ?? `${root}/var/ssh_host_ed25519`,
 );
-const port = Number(process.env.CHESSHUB_PORT ?? 2222);
+const port = Number(process.env.GITCHESS_PORT ?? 2222);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
-  throw new Error("CHESSHUB_PORT must be an integer between 1 and 65535");
+  throw new Error("GITCHESS_PORT must be an integer between 1 and 65535");
 }
 
 if (!existsSync(`${repo}/HEAD`)) {

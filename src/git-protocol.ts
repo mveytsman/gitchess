@@ -7,7 +7,7 @@ const flush = Symbol("flush");
 type Packet = Buffer | typeof flush;
 
 function debug(message: string): void {
-  if (process.env.CHESSHUB_DEBUG) {
+  if (process.env.GITCHESS_DEBUG) {
     console.error(`proc-receive: ${message}`);
   }
 }

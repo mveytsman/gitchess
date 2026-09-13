@@ -33,17 +33,17 @@ procReceive((updates, pushOptions) => {
       git,
       options.get("opponent")!,
       options.get("color")!,
-      process.env.CHESSHUB_PLAYER,
+      process.env.GITCHESS_PLAYER,
     );
     git.transaction(created.operations);
-    const alias = `games/${process.env.CHESSHUB_PLAYER}/${options.get("opponent")}/${created.game.id}`;
-    console.error(`ChessHub: created ${alias}`);
-    console.error(`ChessHub: run git fetch origin, then git switch --track origin/${alias}`);
+    const alias = `games/${process.env.GITCHESS_PLAYER}/${options.get("opponent")}/${created.game.id}`;
+    console.error(`gitchess: created ${alias}`);
+    console.error(`gitchess: run git fetch origin, then git switch --track origin/${alias}`);
   } else if (update.ref === MOVE_REF) {
     const options = optionsFor(pushOptions, ["move"]);
-    const moved = gameMove(git, update.oid, options.get("move")!, process.env.CHESSHUB_PLAYER);
+    const moved = gameMove(git, update.oid, options.get("move")!, process.env.GITCHESS_PLAYER);
     git.transaction(moved.operations);
-    console.error(`ChessHub: played ${moved.move}; run git pull --ff-only`);
+    console.error(`gitchess: played ${moved.move}; run git pull --ff-only`);
   } else {
     throw new Error(`Unknown game action: ${update.ref}`);
   }

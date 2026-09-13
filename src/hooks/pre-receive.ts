@@ -5,7 +5,7 @@ import { authorizeGameAction } from "../games.js";
 for await (const line of createInterface({ input: process.stdin })) {
   const [, oid, ref] = line.split(" ");
   try {
-    authorizeGameAction(ref ?? "", oid ?? "", process.env.CHESSHUB_PLAYER);
+    authorizeGameAction(ref ?? "", oid ?? "", process.env.GITCHESS_PLAYER);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

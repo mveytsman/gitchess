@@ -1,4 +1,4 @@
-# ChessHub
+# gitchess
 
 A learning project exploring “FUSE for Git” through a Git-backed chess game.
 
@@ -30,7 +30,7 @@ and registration; a conflicting identity causes setup to fail rather than
 overwrite it. Underscore-prefixed usernames are reserved and cannot be chosen
 during interactive signup.
 
-You can challenge `_chessbot`; ChessHub generates the game ID. This provisions
+You can challenge `_chessbot`; gitchess generates the game ID. This provisions
 the bot's identity only—it does not yet run a bot or generate chess moves. For
 future bot Git commands, select its key with
 `GIT_SSH_COMMAND='ssh -i /absolute/path/to/var/chessbot_ed25519 -o IdentitiesOnly=yes'`.
@@ -50,9 +50,9 @@ command.
 After verifying possession of an unregistered key, the server asks:
 
 ```text
-Welcome to ChessHub
+Welcome to gitchess
 Your username and public key will be publicly discoverable.
-Choose a ChessHub username: alice
+Choose a gitchess username: alice
 ```
 
 Choose 1–32 lowercase letters, digits, underscores or hyphens, starting with a
@@ -102,9 +102,9 @@ Normal clones do not create local copies of `refs/users/*`. To fetch the directo
 explicitly and inspect Alice's public key:
 
 ```sh
-git fetch origin '+refs/users/*:refs/chesshub/users/*'
-git for-each-ref --format='%(refname:strip=3)' refs/chesshub/users/
-git cat-file blob refs/chesshub/users/alice
+git fetch origin '+refs/users/*:refs/gitchess/users/*'
+git for-each-ref --format='%(refname:strip=3)' refs/gitchess/users/
+git cat-file blob refs/gitchess/users/alice
 ```
 
 ## Identity storage
@@ -125,7 +125,7 @@ connections verify a fresh signature and resolve the fingerprint's symbolic ref.
 Both ref prefixes are publicly readable for discovery. The pre-receive hook
 rejects all client creation, modification and deletion of identity refs; only
 server-side registration writes them. The SSH server passes the authenticated
-name to Git and its hooks as `CHESSHUB_PLAYER`; clients cannot set it via SSH
+name to Git and its hooks as `GITCHESS_PLAYER`; clients cannot set it via SSH
 environment requests. Clients invoke the write-only `refs/new-game` and
 `refs/moves` action refs. Direct writes to identity, game, canonical, and normal
 branch refs are rejected.
@@ -179,7 +179,7 @@ git pull --ff-only
 `HEAD` identifies the exact game and position because the unique canonical game
 ref points to that commit. The server rejects stale positions, wrong turns, and
 illegal moves. For a legal move it creates a child position commit whose author
-is the authenticated mover and whose committer is ChessHub. The client then
+is the authenticated mover and whose committer is gitchess. The client then
 downloads that server-created object with an ordinary fast-forward pull. No
 client-side proposal commit is needed.
 
@@ -193,11 +193,11 @@ Optional configuration:
 
 | Environment variable | Default |
 | --- | --- |
-| `CHESSHUB_PORT` | `2222` |
-| `CHESSHUB_REPO` | Project's `var/chess.git` directory |
-| `CHESSHUB_HOST_KEY` | Project's `var/ssh_host_ed25519` |
+| `GITCHESS_PORT` | `2222` |
+| `GITCHESS_REPO` | Project's `var/chess.git` directory |
+| `GITCHESS_HOST_KEY` | Project's `var/ssh_host_ed25519` |
 
-If overriding `CHESSHUB_HOST_KEY`, use the same value for setup and start. Keep any
+If overriding `GITCHESS_HOST_KEY`, use the same value for setup and start. Keep any
 custom key path outside version control.
 
 ## Development

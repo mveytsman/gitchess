@@ -17,16 +17,28 @@ git --git-dir="$repo" config --add \
   receive.procReceiveRefs \
   'a:refs/moves'
 
-if ! git --git-dir="$repo" show-ref --verify --quiet refs/heads/main; then
-  readme_oid="$(git --git-dir="$repo" hash-object -w "$root/repository/README.md")"
+readme_oid="$(git --git-dir="$repo" hash-object -w "$root/repository/README.md")"
+current_main="$(git --git-dir="$repo" rev-parse --verify refs/heads/main 2>/dev/null || true)"
+current_readme="$(git --git-dir="$repo" rev-parse --verify refs/heads/main:README.md 2>/dev/null || true)"
+if [[ "$current_readme" != "$readme_oid" ]]; then
   tree_oid="$(printf '100644 blob %s\tREADME.md\n' "$readme_oid" | git --git-dir="$repo" mktree)"
-  commit_oid="$(printf 'Welcome to ChessHub\n' | \
-    GIT_AUTHOR_NAME=ChessHub \
-    GIT_AUTHOR_EMAIL=server@chesshub \
-    GIT_COMMITTER_NAME=ChessHub \
-    GIT_COMMITTER_EMAIL=server@chesshub \
-    git --git-dir="$repo" commit-tree "$tree_oid")"
-  git --git-dir="$repo" update-ref refs/heads/main "$commit_oid"
+  message='Welcome to gitchess'
+  if [[ -n "$current_main" ]]; then
+    message='Update the gitchess player guide'
+  fi
+  if [[ -n "$current_main" ]]; then
+    commit_oid="$(printf '%s\n' "$message" | \
+      GIT_AUTHOR_NAME=gitchess GIT_AUTHOR_EMAIL=server@gitchess \
+      GIT_COMMITTER_NAME=gitchess GIT_COMMITTER_EMAIL=server@gitchess \
+      git --git-dir="$repo" commit-tree "$tree_oid" -p "$current_main")"
+    git --git-dir="$repo" update-ref refs/heads/main "$commit_oid" "$current_main"
+  else
+    commit_oid="$(printf '%s\n' "$message" | \
+      GIT_AUTHOR_NAME=gitchess GIT_AUTHOR_EMAIL=server@gitchess \
+      GIT_COMMITTER_NAME=gitchess GIT_COMMITTER_EMAIL=server@gitchess \
+      git --git-dir="$repo" commit-tree "$tree_oid")"
+    git --git-dir="$repo" update-ref refs/heads/main "$commit_oid"
+  fi
 fi
 git --git-dir="$repo" symbolic-ref HEAD refs/heads/main
 

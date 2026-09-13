@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-host_key="${CHESSHUB_HOST_KEY:-$root/var/ssh_host_ed25519}"
+host_key="${GITCHESS_HOST_KEY:-$root/var/ssh_host_ed25519}"
 
 if [[ -e "$host_key" || -L "$host_key" ]]; then
   printf 'Keeping existing SSH host key at %s\n' "$host_key"
@@ -16,5 +16,5 @@ fi
 
 umask 077
 mkdir -p "$(dirname "$host_key")"
-ssh-keygen -q -t ed25519 -N '' -C chesshub-host -f "$host_key" </dev/null
+ssh-keygen -q -t ed25519 -N '' -C gitchess-host -f "$host_key" </dev/null
 printf 'Generated SSH host key at %s\n' "$host_key"

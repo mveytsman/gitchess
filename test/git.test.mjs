@@ -42,7 +42,7 @@ test("transport processes stream Git advertisements and use only the requested p
 });
 
 function fixture() {
-  const dir = mkdtempSync(`${tmpdir()}/chesshub-git-`);
+  const dir = mkdtempSync(`${tmpdir()}/gitchess-git-`);
   const path = `${dir}/repo.git`;
   execFileSync("git", ["init", "--bare", path], { stdio: "ignore" });
   const inspect = (...args) => execFileSync("git", [`--git-dir=${path}`, ...args]);

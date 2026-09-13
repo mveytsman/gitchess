@@ -39,7 +39,7 @@ export class GitRepository {
     if (options.protocol !== undefined && !/^version=[012]$/.test(options.protocol)) {
       throw new Error(`Unsupported Git protocol: ${options.protocol}`);
     }
-    const env: NodeJS.ProcessEnv = { ...process.env, CHESSHUB_PLAYER: options.player };
+    const env: NodeJS.ProcessEnv = { ...process.env, GITCHESS_PLAYER: options.player };
     // Never inherit a protocol setting from the server's environment.
     delete env.GIT_PROTOCOL;
     if (options.protocol) env.GIT_PROTOCOL = options.protocol;
@@ -160,9 +160,9 @@ export class GitRepository {
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       GIT_AUTHOR_NAME: author,
-      GIT_AUTHOR_EMAIL: `${author}@chesshub`,
-      GIT_COMMITTER_NAME: "ChessHub",
-      GIT_COMMITTER_EMAIL: "server@chesshub",
+      GIT_AUTHOR_EMAIL: `${author}@gitchess`,
+      GIT_COMMITTER_NAME: "gitchess",
+      GIT_COMMITTER_EMAIL: "server@gitchess",
     };
     return this.run(
       ["commit-tree", tree, ...parents.flatMap((parent) => ["-p", parent])],

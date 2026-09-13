@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { GitRepository } from "../dist/git.js";
 
 test("game actions create games and validated server-generated positions", () => {
-  const dir = mkdtempSync(`${tmpdir()}/chesshub-games-`);
+  const dir = mkdtempSync(`${tmpdir()}/gitchess-games-`);
   const repo = `${dir}/repo.git`, client = `${dir}/client`;
   const run = (...args) => execFileSync("git", args, {
     encoding: "utf8", stdio: ["pipe", "pipe", "pipe"],
@@ -19,7 +19,7 @@ test("game actions create games and validated server-generated positions", () =>
   run("-C", client, "commit", "--allow-empty", "-m", "client anchor");
   const git = new GitRepository(repo);
   const key = git.writeBlob("test key");
-  const readme = git.writeBlob("# ChessHub\n");
+  const readme = git.writeBlob("# gitchess\n");
   const main = git.createCommit(git.writeTree([{ name: "README.md", oid: readme }]), [], "Welcome", "alice");
   git.transaction(["alice", "bob", "eve", "_chessbot"].map(name =>
     ({ kind: "create", ref: `refs/users/${name}`, oid: key })).concat([
@@ -39,7 +39,7 @@ test("game actions create games and validated server-generated positions", () =>
     ["-C", client, "push", ...options.flatMap(option => ["-o", option]), repo, `HEAD:${destination}`],
     {
       encoding: "utf8", timeout: 10000,
-      env: { ...process.env, CHESSHUB_PLAYER: player },
+      env: { ...process.env, GITCHESS_PLAYER: player },
     },
   );
   const oid = ref => run("--git-dir", repo, "rev-parse", ref);
@@ -50,7 +50,7 @@ test("game actions create games and validated server-generated positions", () =>
 
   let result = push("alice", "refs/new-game", ["opponent=bob", "color=black"]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /ChessHub: created games\/alice\/bob\/[a-f0-9]{16}/);
+  assert.match(result.stderr, /gitchess: created games\/alice\/bob\/[a-f0-9]{16}/);
   const canonical = run(
     "--git-dir", repo, "for-each-ref", "--format=%(refname)", "refs/heads/canonical",
   );
@@ -70,7 +70,7 @@ test("game actions create games and validated server-generated positions", () =>
   for (const alias of [alice, bob]) assert.equal(git.readSymbolicRef(alias), canonical);
   assert.equal(git.readFile(initial, "position.fen").toString(),
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\n");
-  assert.equal(git.readFile(initial, "README.md").toString(), "# ChessHub\n");
+  assert.equal(git.readFile(initial, "README.md").toString(), "# gitchess\n");
   assert.equal(oid(`${initial}:README.md`), oid("refs/heads/main:README.md"));
   const png = git.readFile(initial, "position.png");
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");

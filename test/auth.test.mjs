@@ -12,7 +12,7 @@ import { GitRepository } from "../dist/git.js";
 import { authentication } from "../dist/auth.js";
 
 function fixture() {
-  const dir = mkdtempSync(`${tmpdir()}/chesshub-users-`);
+  const dir = mkdtempSync(`${tmpdir()}/gitchess-users-`);
   const repo = `${dir}/repo.git`;
   execFileSync("git", ["init", "--bare", repo], { stdio: "ignore" });
   return { dir, repo, users: new Users(new GitRepository(repo)) };
@@ -152,16 +152,16 @@ test("users are discoverable and fetchable but identity pushes are rejected", ()
   const client = `${dir}/client`;
   execFileSync("git", ["init", client], { stdio: "ignore" });
   const git = (...args) => execFileSync("git", ["-C", client, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  git("fetch", repo, "+refs/users/*:refs/chesshub/users/*");
-  assert.match(git("cat-file", "blob", "refs/chesshub/users/alice"), /^ssh-ed25519 /);
+  git("fetch", repo, "+refs/users/*:refs/gitchess/users/*");
+  assert.match(git("cat-file", "blob", "refs/gitchess/users/alice"), /^ssh-ed25519 /);
   const zero = "0".repeat(40);
-  const oid = git("rev-parse", "refs/chesshub/users/alice").trim();
+  const oid = git("rev-parse", "refs/gitchess/users/alice").trim();
   for (const ref of ["refs/users/alice", "refs/users/new", `refs/keys/${fingerprint(key.publicKey)}`, "refs/keys/new"]) {
     for (const [oldOid, newOid] of [[zero, oid], [oid, oid], [oid, zero]]) {
       const check = spawnSync(process.execPath, [hook], { input: `${oldOid} ${newOid} ${ref}\n`, encoding: "utf8" });
       assert.equal(check.status, 1);
     }
-    const push = spawnSync("git", ["-C", client, "push", repo, `refs/chesshub/users/alice:${ref}`], { encoding: "utf8" });
+    const push = spawnSync("git", ["-C", client, "push", repo, `refs/gitchess/users/alice:${ref}`], { encoding: "utf8" });
     // Existing identical refs may be skipped by Git; new refs exercise the hook.
     if (ref.endsWith("/new")) {
       assert.notEqual(push.status, 0);

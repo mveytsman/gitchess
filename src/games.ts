@@ -87,7 +87,7 @@ export function createGame(
   const chosenColor = color === "white" ? "White" : "Black";
   const message = `Start game ${id}\n\n${creator} challenged ${opponent} and chose ${chosenColor}.`;
   const mainOid = git.readDirectRef("refs/heads/main");
-  if (!mainOid) throw new Error("ChessHub's main branch has not been initialized");
+  if (!mainOid) throw new Error("gitchess's main branch has not been initialized");
   const newOid = git.createCommit(
     positionTree(git, INITIAL_FEN, readmeFrom(git, mainOid)),
     [],

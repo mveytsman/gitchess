@@ -47,8 +47,8 @@ export function authentication(users: Users, authenticated: (username: string) =
       let aborted = false;
       ctx.once("abort", () => { aborted = true; });
       const ask = (instructions: string, attempts: number): void => {
-        ctx.prompt([{ prompt: "Choose a ChessHub username: ", echo: true }],
-          "Welcome to ChessHub", instructions, (answers) => {
+        ctx.prompt([{ prompt: "Choose a gitchess username: ", echo: true }],
+          "Welcome to gitchess", instructions, (answers) => {
             if (aborted || !Array.isArray(answers)) return;
             try {
               const username = users.register(answers[0] ?? "", publicKey);

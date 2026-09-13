@@ -1,6 +1,6 @@
-# ChessHub
+# gitchess
 
-ChessHub is a learning project exploring the idea of “FUSE for Git” through a Git-backed chess game.
+gitchess is a learning project exploring the idea of “FUSE for Git” through a Git-backed chess game.
 
 ## Collaboration
 
