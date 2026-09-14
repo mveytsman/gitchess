@@ -293,6 +293,8 @@ Optional configuration:
 | `GITCHESS_REPO` | Project's `var/chess.git` directory |
 | `GITCHESS_HOST_KEY` | Project's `var/ssh_host_ed25519` |
 | `GITCHESS_BOT_INTERVAL_MS` | `1000` |
+| `GITCHESS_WEB_HOST` | `127.0.0.1` |
+| `GITCHESS_WEB_PORT` | `8080` |
 
 If overriding `GITCHESS_HOST_KEY`, use the same value for setup and start. Keep any
 custom key path outside version control.
@@ -326,7 +328,9 @@ are serialized and use Fly's remote builder, so the runner does not build the
 container locally.
 
 The checked-in configuration uses Toronto (`yyz`), creates a 1 GB volume, maps
-public port 22 to the app's port 2222, and allows the Machine to stop while idle.
+public port 22 to the app's port 2222, and serves an HTTP redirect on ports 80
+and 443. Every web request redirects to
+`https://github.com/mveytsman/gitchess`. The Machine can stop while idle.
 Keep this app at one Machine: Fly Volumes are local and gitchess does not yet
 replicate Git state between Machines.
 

@@ -7,6 +7,7 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/*.test.mjs",
     "start": "npm run build && node dist/server.js",
+    "web": "npm run build && node dist/web-server.js",
     "bot": "npm run build && node dist/bot-worker.js",
     "setup": "npm run build && bash scripts/setup-host-key.sh && bash scripts/setup-repo.sh && bash scripts/setup-bot.sh"
   },

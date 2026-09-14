@@ -16,6 +16,8 @@ kill_timeout = '30s'
   GITCHESS_HOST_KEY = '/data/ssh_host_ed25519'
   GITCHESS_PORT = '2222'
   GITCHESS_REPO = '/data/chess.git'
+  GITCHESS_WEB_HOST = '0.0.0.0'
+  GITCHESS_WEB_PORT = '8080'
 
 [[mounts]]
   source = 'gitchess_data'
@@ -32,6 +34,32 @@ kill_timeout = '30s'
 
   [[services.ports]]
     port = 22
+
+  [services.concurrency]
+    type = 'connections'
+    hard_limit = 100
+    soft_limit = 50
+
+  [[services.tcp_checks]]
+    interval = '15s'
+    timeout = '2s'
+    grace_period = '5s'
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8080
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    handlers = ['http']
+    port = 80
+    force_https = true
+
+  [[services.ports]]
+    handlers = ['tls', 'http']
+    port = 443
 
   [services.concurrency]
     type = 'connections'

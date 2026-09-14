@@ -10,11 +10,14 @@ bash scripts/setup-bot.sh
 
 bot_pid=''
 server_pid=''
+web_pid=''
 
 shutdown() {
   trap - TERM INT
+  [[ -z "$web_pid" ]] || kill "$web_pid" 2>/dev/null || true
   [[ -z "$server_pid" ]] || kill "$server_pid" 2>/dev/null || true
   [[ -z "$bot_pid" ]] || kill "$bot_pid" 2>/dev/null || true
+  [[ -z "$web_pid" ]] || wait "$web_pid" 2>/dev/null || true
   [[ -z "$server_pid" ]] || wait "$server_pid" 2>/dev/null || true
   [[ -z "$bot_pid" ]] || wait "$bot_pid" 2>/dev/null || true
 }
@@ -25,9 +28,11 @@ node dist/bot-worker.js &
 bot_pid=$!
 node dist/server.js &
 server_pid=$!
+node dist/web-server.js &
+web_pid=$!
 
 set +e
-wait -n "$bot_pid" "$server_pid"
+wait -n "$bot_pid" "$server_pid" "$web_pid"
 status=$?
 set -e
 shutdown
