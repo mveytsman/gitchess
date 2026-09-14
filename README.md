@@ -2,6 +2,24 @@
 
 A learning project exploring “FUSE for Git” through a Git-backed chess game.
 
+## Play on the hosted server
+
+The project website is [git.max.computer](https://git.max.computer), and the
+Git-over-SSH endpoint is `ssh://git@git.max.computer/chess.git`.
+
+Clone the game repository with its `git chess` alias configured:
+
+```sh
+git clone -c alias.chess='!./git-chess' \
+  ssh://git@git.max.computer/chess.git chess
+cd chess
+git chess install
+```
+
+Your first connection asks you to register a username. After cloning, use
+`git chess players` to find an opponent and `git chess challenge <username>` to
+start a game.
+
 ## Run locally
 
 Use Node.js 24 or newer and Git 2.50 or newer (registration uses symbolic-ref
@@ -342,11 +360,11 @@ deployment; raw SSH cannot use Fly's shared IPv4 routing:
 fly ips allocate-v4
 ```
 
-Clone using the selected Fly app name; port 22 is implicit:
+Clone using the production domain; port 22 is implicit:
 
 ```sh
 git clone -c alias.chess='!./git-chess' \
-  ssh://git@<app-name>.fly.dev/chess.git chess
+  ssh://git@git.max.computer/chess.git chess
 cd chess
 git chess install
 ```
