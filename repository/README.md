@@ -1,8 +1,24 @@
 # gitchess
 
-Welcome to gitchess! Here, you can play chess with other humans or bots, entirely via a git!
+Welcome to [gitchess](https://chess.max.computer/)! 
 
-# Install the helper
+This repository let's you play chess with other humans or bots, implemented entirely via the git protocol. Each game is on its own [branch](https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-branch), with [symbolic refs](https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-symref) tracking a particular user's games. The head of each game's branch, is the current game state, with a [tree](https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-treeobject) containing the position as [FEN](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation), along with an SVG and PNG. Moves are proposed via [push options](https://git-scm.com/docs/git-push#Documentation/git-push.txt---push-optionoption) to a special [ref](https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-ref). Players are tracked with refs pointing to their public keys.
+
+You can see the full implementation on [GitHub](https://github.com/mveytsman/gitchess)
+
+# Quick(est) Start
+
+You can build your own client by asking your agent to execute something like
+
+```
+Read the README in this directory, build me a UI for  playing gitchess. Taylor the implementation details and the user experience based on what you know about me.
+```
+
+If you want to understand how this actually works, read on.
+
+# Quickstart
+
+## Install the helper
 You can play gitchess entirely via git commands, which we will walk through below, or install the helper by running
 
 ```sh
@@ -26,7 +42,7 @@ git chess players
 The underlying Git command is:
 
 ```sh
-git ls-remote origin 'refs/users/*' | sed 's|.*refs/users/||'
+git ls-remote origin 'refs/users/*'
 ```
 
 ## Start a game
@@ -41,18 +57,20 @@ git chess challenge bob --black
 The command creates a server-assigned game ID, downloads the generated initial
 position, and switches to its local tracking branch.
 
-The underlying Git commands are:
+The underlying Git command is:
 
 ```sh
 git push -o opponent=bob -o color=white origin HEAD:refs/new-game
+```
+
+The server generates a new branch and prints it, `git chess challenge` extracts its ID and performs the fetch and switch
+
+```sh
 git fetch origin \
   refs/heads/games/alice/bob/<generated-id>:refs/remotes/origin/games/alice/bob/<generated-id>
 git switch --track -c games/alice/bob/<generated-id> \
   origin/games/alice/bob/<generated-id>
 ```
-
-The server prints the generated branch; `git chess challenge` extracts its ID
-and performs the fetch and switch automatically.
 
 Public game branches are ordered White then Black. For example:
 
@@ -74,12 +92,12 @@ games remain visible.
 
 ## Play the bot
 
-Choose one of the registered `js-chess-engine` players:
+Choose one of the registered bot players:
 
 ```sh
-git chess challenge _chessbot-easy  # level 2
-git chess challenge _chessbot       # level 3
-git chess challenge _chessbot-hard  # level 5
+git chess challenge _chessbot-easy  
+git chess challenge _chessbot       
+git chess challenge _chessbot-hard  
 ```
 
 ## Inspecting game state 
@@ -112,12 +130,4 @@ The underlying Git commands are:
 git pull --ff-only
 git push -o move=e4 origin HEAD:refs/moves
 git pull --ff-only
-```
-
-# Build a client
-
-We recommend building your own client by asking an agent to execute the following prompt
-
-```
-Read the README in this directory, build me a UI for  playing gitchess. Taylor the implementation details and the user experience based on what you know about me.
 ```
