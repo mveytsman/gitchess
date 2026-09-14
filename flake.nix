@@ -25,6 +25,7 @@
         {
           default = pkgs.mkShellNoCC {
             packages = with pkgs; [
+              flyctl
               git
               nodejs_24
             ];

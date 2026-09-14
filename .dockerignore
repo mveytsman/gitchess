@@ -1,0 +1,9 @@
+.git
+.direnv
+.envrc
+AGENTS.md
+dist
+node_modules
+result
+test
+var

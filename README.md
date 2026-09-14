@@ -288,6 +288,7 @@ Optional configuration:
 
 | Environment variable | Default |
 | --- | --- |
+| `GITCHESS_HOST` | `127.0.0.1` |
 | `GITCHESS_PORT` | `2222` |
 | `GITCHESS_REPO` | Project's `var/chess.git` directory |
 | `GITCHESS_HOST_KEY` | Project's `var/ssh_host_ed25519` |
@@ -295,6 +296,68 @@ Optional configuration:
 
 If overriding `GITCHESS_HOST_KEY`, use the same value for setup and start. Keep any
 custom key path outside version control.
+
+## Deploying to Fly.io
+
+The Fly deployment runs the SSH server and bot worker as separate processes in
+one container. They share `/data`, a persistent Fly Volume containing the bare
+repository, SSH host key, and bot keys. Startup runs the idempotent setup scripts
+before either process starts.
+
+Install `flyctl`, sign in, and choose a globally unique app name:
+
+```sh
+fly auth login
+fly launch --name <app-name> --copy-config --no-deploy --ha=false
+fly deploy --ha=false
+```
+
+Pushes to `main` deploy automatically through GitHub Actions. Create an
+app-scoped Fly deploy token and save it as the repository's
+`FLY_API_TOKEN` secret:
+
+```sh
+fly tokens create deploy --app gitchess
+gh secret set FLY_API_TOKEN --repo mveytsman/gitchess
+```
+
+The workflow can also be run manually from GitHub's Actions page. Deployments
+are serialized and use Fly's remote builder, so the runner does not build the
+container locally.
+
+The checked-in configuration uses Toronto (`yyz`), creates a 1 GB volume, maps
+public port 22 to the app's port 2222, and allows the Machine to stop while idle.
+Keep this app at one Machine: Fly Volumes are local and gitchess does not yet
+replicate Git state between Machines.
+
+Fly's public IPv6 address supports this SSH service without another allocation.
+For clients that require IPv4, allocate a dedicated IPv4 address before or after
+deployment; raw SSH cannot use Fly's shared IPv4 routing:
+
+```sh
+fly ips allocate-v4
+```
+
+Clone using the selected Fly app name; port 22 is implicit:
+
+```sh
+git clone -c alias.chess='!./git-chess' \
+  ssh://git@<app-name>.fly.dev/chess.git chess
+cd chess
+git chess install
+```
+
+The first connection records the persistent Fly host key in the client's
+`known_hosts`, and gitchess then runs its normal public-key registration flow.
+Later deployments reuse the repository and keys from the volume.
+
+Useful deployment checks:
+
+```sh
+fly status
+fly volumes list
+fly logs
+```
 
 ## Development
 

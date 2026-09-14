@@ -2,12 +2,13 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-repo="$root/var/chess.git"
+repo="${GITCHESS_REPO:-$root/var/chess.git}"
+state_dir="$(dirname "$repo")"
 
 register_bot() {
   local username="$1"
   local key_name="$2"
-  local bot_key="$root/var/$key_name"
+  local bot_key="$state_dir/$key_name"
 
   if [[ ! -e "$bot_key" && ! -L "$bot_key" ]]; then
     if [[ -e "$bot_key.pub" || -L "$bot_key.pub" ]]; then
