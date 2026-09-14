@@ -1,6 +1,6 @@
 # gitchess
 
-Welcome to [gitchess](https://chess.max.computer/)! 
+Welcome to [gitchess](https://git.max.computer/chess.git)! 
 
 This repository let's you play chess with other humans or bots, implemented entirely via the git protocol. Each game is on its own [branch](https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-branch), with [symbolic refs](https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-symref) tracking a particular user's games. The head of each game's branch, is the current game state, with a [tree](https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-treeobject) containing the position as [FEN](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation), along with an SVG and PNG. Moves are proposed via [push options](https://git-scm.com/docs/git-push#Documentation/git-push.txt---push-optionoption) to a special [ref](https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-ref). Players are tracked with refs pointing to their public keys.
 
@@ -11,7 +11,7 @@ You can see the full implementation on [GitHub](https://github.com/mveytsman/git
 You can build your own client by asking your agent to execute something like
 
 ```
-Read the README in this directory, build me a UI for  playing gitchess. Taylor the implementation details and the user experience based on what you know about me.
+Read the README in this directory, build me a UI for  playing gitchess. Tailer the implementation details and the user experience based on what you know about me.
 ```
 
 If you want to understand how this actually works, read on.
