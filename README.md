@@ -26,15 +26,15 @@ preserves the existing key. The Bash setup scripts live in `scripts/`;
 `ssh-keygen` also creates the corresponding `.pub` file. This identifies the server and is separate from your
 personal key used to log in.
 
-Setup also generates a separate bot keypair at `var/chessbot_ed25519` (and
-`.pub`) and registers the public key as `_chessbot`. Reruns preserve the key
-and registration; a conflicting identity causes setup to fail rather than
-overwrite it. Underscore-prefixed usernames are reserved and cannot be chosen
-during interactive signup.
+Setup also generates separate keypairs for `_chessbot-easy`, `_chessbot`, and
+`_chessbot-hard` under `var/`, then registers their public keys as user refs.
+Reruns preserve the keys and registrations; a conflicting identity causes
+setup to fail rather than overwrite it. Underscore-prefixed usernames are
+reserved and cannot be chosen during interactive signup.
 
 The bot worker operates directly on the Git repository, so it does not use the
-bot's private SSH key at runtime. The keypair gives `_chessbot` a normal stored
-identity alongside other players.
+bots' private SSH keys at runtime. The keypairs give them normal stored
+identities alongside other players.
 
 From another terminal, clone into a directory outside this project checkout
 (a clone placed inside it would otherwise show up as an untracked embedded
@@ -251,11 +251,19 @@ The Bash client is intentionally thin. Underneath, `challenge` pushes
 `opponent` and `color` options to `refs/new-game`, while `move` pushes a `move`
 option to `refs/moves`. `git chess players` lists the public user refs.
 
-`_chessbot` is a registered player backed by `js-chess-engine` at difficulty
-level 2. `proc-receive` commits the human action and returns; the separate
-`npm run bot` process discovers game tips where `_chessbot` is to move and
-appends a normal commit authored by `_chessbot`. The game refs themselves are
-the durable queue, so pending turns survive worker restarts.
+Three registered players are backed by `js-chess-engine`:
+
+```text
+_chessbot-easy  level 2
+_chessbot       level 3
+_chessbot-hard  level 5
+```
+
+The bot identity in the game ref selects the level, so no separate difficulty
+setting is needed. `proc-receive` commits the human action and returns; the
+separate `npm run bot` process discovers game tips where one of the bots is to
+move and appends a normal commit authored by that bot. The game refs themselves
+are the durable queue, so pending turns survive worker restarts.
 
 The worker updates a game with a compare-and-swap against the tip it examined.
 That prevents two workers from answering the same position. `git chess` waits

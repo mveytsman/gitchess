@@ -4,8 +4,9 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Chess } from "chess.js";
+import { chessbotLevel } from "./bots.js";
 import { chooseBotMove } from "./chessbot.js";
-import { CHESSBOT, gameMove, queuedBotGame } from "./games.js";
+import { gameMove, queuedBotGame } from "./games.js";
 import { GitRepository } from "./git.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -27,10 +28,12 @@ function runCycle(): boolean {
       const queued = queuedBotGame(git, candidate.ref, candidate.oid);
       if (!queued) continue;
       const chess = new Chess(queued.fen);
-      const selected = chooseBotMove(queued.fen);
+      const level = chessbotLevel(queued.bot);
+      if (level === undefined) throw new Error(`Unknown bot: ${queued.bot}`);
+      const selected = chooseBotMove(queued.fen, level);
       const move = chess.move({ ...selected, promotion: "q" });
       if (!move) throw new Error("Chess engine returned an illegal move");
-      const result = gameMove(git, queued.oid, move.san, CHESSBOT);
+      const result = gameMove(git, queued.oid, move.san, queued.bot);
       git.transaction(result.operations);
       console.log(`gitchess bot: ${queued.ref} played ${result.move}`);
     } catch (error) {

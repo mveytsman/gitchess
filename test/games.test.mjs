@@ -4,6 +4,7 @@ import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { chmodSync, copyFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { chessbotLevel } from "../dist/bots.js";
 import { GitRepository } from "../dist/git.js";
 
 test("game actions create games and validated server-generated positions", () => {
@@ -30,7 +31,7 @@ test("game actions create games and validated server-generated positions", () =>
     { name: "README.md", oid: readme },
     { name: "git-chess", oid: command, mode: "100755" },
   ]), [], "Welcome", "alice");
-  git.transaction(["alice", "bob", "eve", "_chessbot"].map(name =>
+  git.transaction(["alice", "bob", "eve", "_chessbot-easy", "_chessbot", "_chessbot-hard"].map(name =>
     ({ kind: "create", ref: `refs/users/${name}`, oid: key })).concat([
       { kind: "create", ref: "refs/heads/main", oid: main },
     ]));
@@ -77,7 +78,13 @@ test("game actions create games and validated server-generated positions", () =>
 
   const players = chess("alice", "players");
   assert.equal(players.status, 0, players.stderr);
-  assert.deepEqual(players.stdout.trim().split("\n"), ["_chessbot", "alice", "bob", "eve"]);
+  assert.deepEqual(players.stdout.trim().split("\n"), [
+    "_chessbot", "_chessbot-easy", "_chessbot-hard", "alice", "bob", "eve",
+  ]);
+  assert.equal(chessbotLevel("_chessbot-easy"), 2);
+  assert.equal(chessbotLevel("_chessbot"), 3);
+  assert.equal(chessbotLevel("_chessbot-hard"), 5);
+  assert.equal(chessbotLevel("alice"), undefined);
 
   let result = chess("alice", "challenge", "bob", "--black");
   assert.equal(result.status, 0, result.stderr);
@@ -164,9 +171,9 @@ test("game actions create games and validated server-generated positions", () =>
     assert.equal(oid(gameRef), state2);
   }
 
-  result = chess("alice", "challenge", "_chessbot");
+  result = chess("alice", "challenge", "_chessbot-easy");
   assert.equal(result.status, 0, result.stderr);
-  const botBlackBranch = result.stderr.match(/gitchess: created (games\/alice\/_chessbot\/[a-f0-9]{16})/)?.[1];
+  const botBlackBranch = result.stderr.match(/gitchess: created (games\/alice\/_chessbot-easy\/[a-f0-9]{16})/)?.[1];
   assert.ok(botBlackBranch, result.stderr);
   const botBlackRef = `refs/heads/${botBlackBranch}`;
   const botBlackRoot = oid(botBlackRef);
@@ -180,7 +187,7 @@ test("game actions create games and validated server-generated positions", () =>
     result = chess("alice", "move", "e4");
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stderr, /gitchess: played e4/);
-    const queuedHumanMove = result.stderr.match(/gitchess: queued _chessbot at ([a-f0-9]+)/)?.[1];
+    const queuedHumanMove = result.stderr.match(/gitchess: queued _chessbot-easy at ([a-f0-9]+)/)?.[1];
     assert.ok(queuedHumanMove, result.stderr);
     const botBlackReply = oid(botBlackRef);
     const humanMove = run("--git-dir", repo, "rev-parse", `${botBlackReply}^`);
@@ -188,14 +195,14 @@ test("game actions create games and validated server-generated positions", () =>
     assert.equal(run("--git-dir", repo, "rev-parse", `${humanMove}^`), botBlackRoot);
     assert.equal(git.readCommit(humanMove).author, "alice");
     assert.equal(git.readCommit(humanMove).message, "e4\n");
-    assert.equal(git.readCommit(botBlackReply).author, "_chessbot");
+    assert.equal(git.readCommit(botBlackReply).author, "_chessbot-easy");
     assert.equal(git.readCommit(botBlackReply).parents[0], humanMove);
 
-    result = chess("alice", "challenge", "_chessbot", "--black");
+    result = chess("alice", "challenge", "_chessbot-hard", "--black");
     assert.equal(result.status, 0, result.stderr);
-    const queuedOpening = result.stderr.match(/gitchess: queued _chessbot at ([a-f0-9]+)/)?.[1];
+    const queuedOpening = result.stderr.match(/gitchess: queued _chessbot-hard at ([a-f0-9]+)/)?.[1];
     assert.ok(queuedOpening, result.stderr);
-    const botWhiteBranch = result.stderr.match(/gitchess: created (games\/_chessbot\/alice\/[a-f0-9]{16})/)?.[1];
+    const botWhiteBranch = result.stderr.match(/gitchess: created (games\/_chessbot-hard\/alice\/[a-f0-9]{16})/)?.[1];
     assert.ok(botWhiteBranch, result.stderr);
     const botWhiteRef = `refs/heads/${botWhiteBranch}`;
     const botWhiteHead = oid(botWhiteRef);
@@ -203,7 +210,7 @@ test("game actions create games and validated server-generated positions", () =>
     assert.equal(botWhiteRoot, queuedOpening);
     assert.equal(git.readCommit(botWhiteRoot).parents.length, 0);
     assert.equal(git.readCommit(botWhiteRoot).author, "alice");
-    assert.equal(git.readCommit(botWhiteHead).author, "_chessbot");
+    assert.equal(git.readCommit(botWhiteHead).author, "_chessbot-hard");
     assert.equal(git.readCommit(botWhiteHead).parents[0], botWhiteRoot);
 
     execFileSync(process.execPath, [workerPath, "--once"], {

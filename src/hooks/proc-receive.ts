@@ -38,14 +38,16 @@ procReceive((updates, pushOptions) => {
     git.transaction(created.operations);
     const branch = created.game.publicRef.slice("refs/heads/".length);
     console.error(`gitchess: created ${branch}`);
-    if (created.botQueued) console.error(`gitchess: queued _chessbot at ${created.newOid}`);
+    if (created.queuedBot) {
+      console.error(`gitchess: queued ${created.queuedBot} at ${created.newOid}`);
+    }
     console.error(`gitchess: run git fetch origin, then git switch --track origin/${branch}`);
   } else if (update.ref === MOVE_REF) {
     const options = optionsFor(pushOptions, ["move"]);
     const moved = gameMove(git, update.oid, options.get("move")!, process.env.GITCHESS_PLAYER);
     git.transaction(moved.operations);
     console.error(`gitchess: played ${moved.move}`);
-    if (moved.botQueued) console.error(`gitchess: queued _chessbot at ${moved.newOid}`);
+    if (moved.queuedBot) console.error(`gitchess: queued ${moved.queuedBot} at ${moved.newOid}`);
     console.error("gitchess: run git pull --ff-only");
   } else {
     throw new Error(`Unknown game action: ${update.ref}`);

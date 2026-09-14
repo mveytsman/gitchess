@@ -95,18 +95,21 @@ games remain visible.
 
 ## Play the bot
 
-`_chessbot` is a registered player backed by `js-chess-engine`:
+Choose one of the registered `js-chess-engine` players:
 
 ```sh
-git chess challenge _chessbot
+git chess challenge _chessbot-easy  # level 2
+git chess challenge _chessbot       # level 3
+git chess challenge _chessbot-hard  # level 5
 git chess move e4
 ```
 
 When the bot is next to move, the game ref becomes work for a separate bot
-process. Its reply is a normal Git commit authored by `_chessbot`, so the
-history shows the human move followed by the bot move. `git chess` waits briefly
-for that commit. If the worker is unavailable, the move remains queued in Git
-and the command tells you to pull again later.
+process. Its reply is a normal Git commit authored by the selected bot, so the
+history shows the human move followed by the bot move. The identity stored in
+the game ref selects its difficulty. `git chess` waits briefly for that commit.
+If the worker is unavailable, the move remains queued in Git and the command
+tells you to pull again later.
 
 ## Make a move
 

@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { Chess } from "chess.js";
+import { chessbotLevel, type Chessbot } from "./bots.js";
 import { buildGameTree } from "./game-tree.js";
 import { GitRepository, type RefOperation } from "./git.js";
 import { INITIAL_FEN } from "./position.js";
@@ -10,7 +11,6 @@ const GAME_ID = "[a-f0-9]{16}";
 
 export const NEW_GAME_REF = "refs/new-game";
 export const MOVE_REF = "refs/moves";
-export const CHESSBOT = "_chessbot";
 
 type Game = {
   white: string;
@@ -54,7 +54,7 @@ export function authorizeGameAction(ref: string, oid: string, player: string | u
   if (/^0+$/.test(oid)) throw new Error("Game deletion is not supported");
 }
 
-export type QueuedBotGame = { ref: string; oid: string; fen: string };
+export type QueuedBotGame = { ref: string; oid: string; fen: string; bot: Chessbot };
 
 function position(git: GitRepository, oid: string): Chess {
   return new Chess(git.readFile(oid, "position.fen").toString("utf8").trimEnd());
@@ -75,10 +75,10 @@ export function queuedBotGame(
   } catch {
     return undefined;
   }
-  if (game.white !== CHESSBOT && game.black !== CHESSBOT) return undefined;
   const chess = position(git, oid);
-  if (chess.isGameOver() || playerToMove(game, chess) !== CHESSBOT) return undefined;
-  return { ref, oid, fen: chess.fen() };
+  const bot = playerToMove(game, chess);
+  if (chess.isGameOver() || chessbotLevel(bot) === undefined) return undefined;
+  return { ref, oid, fen: chess.fen(), bot: bot as Chessbot };
 }
 
 export function createGame(
@@ -86,7 +86,7 @@ export function createGame(
   opponent: string,
   color: string,
   player: string | undefined,
-): { game: Game; operations: RefOperation[]; newOid: string; botQueued: boolean } {
+): { game: Game; operations: RefOperation[]; newOid: string; queuedBot?: Chessbot } {
   const creator = requirePlayer(player);
   if (!new RegExp(`^${USERNAME}$`).test(opponent)) throw new Error(`Invalid opponent: ${opponent}`);
   if (creator === opponent) throw new Error("Choose another player as your opponent");
@@ -112,7 +112,7 @@ export function createGame(
   return {
     game,
     newOid,
-    botQueued: white === CHESSBOT,
+    queuedBot: chessbotLevel(white) === undefined ? undefined : white as Chessbot,
     operations: [
       { kind: "create", ref: game.publicRef, oid: newOid },
       ...game.indexes.map((index): RefOperation => (
@@ -127,7 +127,7 @@ export function gameMove(
   currentOid: string,
   requestedMove: string,
   player: string | undefined,
-): { game: Game; operations: RefOperation[]; newOid: string; move: string; botQueued: boolean } {
+): { game: Game; operations: RefOperation[]; newOid: string; move: string; queuedBot?: Chessbot } {
   const authenticatedPlayer = requirePlayer(player);
   const matches = git.refsPointingAt(currentOid, "refs/heads/games");
   if (matches.length === 0) throw new Error("No current game has that position; fetch it and retry");
@@ -159,12 +159,14 @@ export function gameMove(
     authenticatedPlayer,
   );
   const nextPlayer = authenticatedPlayer === game.white ? game.black : game.white;
-  const botQueued = nextPlayer === CHESSBOT && !chess.isGameOver();
+  const queuedBot = !chess.isGameOver() && chessbotLevel(nextPlayer) !== undefined
+    ? nextPlayer as Chessbot
+    : undefined;
   return {
     game,
     newOid,
     move: move.san,
-    botQueued,
+    queuedBot,
     operations: [
       ...game.indexes.map((index): RefOperation => (
         { kind: "verify-symbolic", ref: index, target: game.publicRef }

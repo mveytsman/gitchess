@@ -1,12 +1,11 @@
 import { ai } from "js-chess-engine";
-
-const LEVEL = 2;
+import type { ChessbotLevel } from "./bots.js";
 
 export type BotMove = { from: string; to: string };
 
-export function chooseBotMove(fen: string): BotMove {
+export function chooseBotMove(fen: string, level: ChessbotLevel): BotMove {
   const entries = Object.entries(ai(fen, {
-    level: LEVEL,
+    level,
     play: false,
   }).move);
   if (entries.length !== 1) throw new Error("Chess engine did not return exactly one move");
