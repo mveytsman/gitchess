@@ -349,9 +349,8 @@ are serialized and use Fly's remote builder, so the runner does not build the
 container locally.
 
 The checked-in configuration uses Toronto (`yyz`), creates a 1 GB volume, maps
-public port 22 to the app's port 2222, and serves an HTTP redirect on ports 80
-and 443. Every web request redirects to
-`https://github.com/mveytsman/gitchess`. The Machine can stop while idle.
+public port 22 to the app's port 2222, and serves the static website on ports 80
+and 443. The Machine can stop while idle.
 Keep this app at one Machine: Fly Volumes are local and gitchess does not yet
 replicate Git state between Machines.
 
@@ -397,3 +396,34 @@ build before starting their respective processes. `npm run setup` builds,
 generates the local SSH host key if missing, and installs both hooks into the
 local bare repository. Tests use temporary Git repositories and simulated
 authentication events; they do not start an SSH server.
+
+## Website
+
+The website’s own Markdown pages live in `website/pages/`, independently of the
+player guide in `repository/README.md`. Edit `website/pages/about.md` to update
+the homepage. Add another lowercase, hyphenated `.md` file to create a page and
+its navigation tab (for example, `help.md` becomes `/help/`). Use a first-level
+heading for the page title and site-relative URLs for links between pages.
+
+`npm run build` compiles TypeScript and generates plain HTML and CSS in
+`dist/public/`. About is served at both `/` and `/about/`. Markdown is trusted,
+checked-in project content. No browser JavaScript or Git repository is needed
+to serve these pages. The generated directory can also be served by another
+static web server.
+
+Run `npm run web` to build and preview at `http://127.0.0.1:8080`. This starts
+only the HTTP server. Rebuild after editing Markdown or `website/style.css`;
+the running server reads the updated files.
+
+The Games tab reads public branches from `GITCHESS_REPO` (default:
+`var/chess.git`). A background worker checks for changes every three seconds,
+then generates `/games/` and `/games/<game-id>/` with the stored board image,
+move history, and game status. Refresh your browser to see updates. Unchanged
+games are skipped, and files are replaced atomically. A missing repository
+shows an unavailable message; an empty repository shows “No games yet.”
+`GITCHESS_WEB_ROOT` can override the generated output directory (default:
+`dist/public`). Set `GITCHESS_WEB_PORT=0` to choose an available port.
+
+Game pages are generated at runtime, since deployment builds do not contain
+live games. The worker only reads the repository; it never starts SSH or the
+bot worker. `games.md` is reserved for the generated Games tab.

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node dist/build-site.js",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/*.test.mjs",
     "start": "npm run build && node dist/server.js",
@@ -20,6 +20,7 @@
     "@resvg/resvg-js": "^2.6.2",
     "chess.js": "^1.4.0",
     "js-chess-engine": "^2.4.6",
+    "marked": "^18.0.14",
     "ssh2": "^1.17.0"
   }
 }

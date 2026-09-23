@@ -33,7 +33,7 @@ function gameRefs(white: string, black: string, id: string): Game {
   };
 }
 
-function parseGameRef(ref: string): Game {
+export function parseGameRef(ref: string): Game {
   const match = new RegExp(`^refs/heads/games/(${USERNAME})/(${USERNAME})/(${GAME_ID})$`).exec(ref);
   if (!match) throw new Error(`Invalid game ref: ${ref}`);
   return gameRefs(match[1]!, match[2]!, match[3]!);
