@@ -1,5 +1,5 @@
 import { workerData } from "node:worker_threads";
-import { GameSite } from "./game-site.js";
+import { GameSite } from "./games.js";
 
 const { repo, output, interval } = workerData as { repo: string; output: string; interval: number };
 const site = new GameSite(repo, output);

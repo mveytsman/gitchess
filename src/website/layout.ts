@@ -2,8 +2,8 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { Marked } from "marked";
 
-export const websiteSource = new URL("../website/", import.meta.url);
-export const websiteOutput = new URL("./public/", import.meta.url);
+export const websiteSource = new URL("../../src/website/", import.meta.url);
+export const websiteOutput = new URL("../public/", import.meta.url);
 
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({
@@ -24,7 +24,7 @@ export function buildSite(source: string, output: string): void {
     })
     .sort((a, b) => a.slug === "about" ? -1 : b.slug === "about" ? 1 : a.slug.localeCompare(b.slug));
   if (!pages.some((page) => page.slug === "about")) {
-    throw new Error("website/pages/about.md is required");
+    throw new Error("src/website/pages/about.md is required");
   }
 
   if (pages.some((page) => page.slug === "games")) throw new Error("games is reserved for generated game pages");
@@ -58,11 +58,11 @@ export function renderPage(title: string, content: string, active: string, slugs
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header><strong><a href="/">gitchess</a></strong><p>Chess, entirely through the Git protocol.</p></header>
+<header><strong><a href="/">gitchess</a></strong><p>chess, but make it run on git</p></header>
 <nav aria-label="Project">${tabs}
 <a href="https://github.com/mveytsman/gitchess">source</a></nav>
 <main>${content}</main>
-<footer>gitchess · a learning project exploring “FUSE for Git”</footer>
+<footer>gitchess · Max Veytsman 2026</footer>
 </body>
 </html>
 `;

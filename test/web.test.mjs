@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { buildSite } from "../dist/site.js";
-import { serveStatic } from "../dist/web.js";
+import { buildSite } from "../dist/website/layout.js";
+import { serveStatic } from "../dist/website/static.js";
 
 async function request(url, method = "GET", root) {
   let status, headers, body;
@@ -45,7 +45,7 @@ test("serves the built About page and stylesheet, including HEAD and query strin
   const home = await request("/");
   assert.equal(home.status, 200);
   assert.match(home.headers["Content-Type"], /text\/html/);
-  assert.match(home.body, /Build your own client/);
+  assert.match(home.body, /<main>\s*<h1>/);
   assert.equal((await request("/about/?from=test")).body, home.body);
   assert.equal((await request("/about")).body, home.body);
   const head = await request("/", "HEAD");
@@ -55,7 +55,7 @@ test("serves the built About page and stylesheet, including HEAD and query strin
   const css = await request("/style.css");
   assert.equal(css.status, 200);
   assert.match(css.headers["Content-Type"], /text\/css/);
-  assert.equal(css.body, readFileSync(new URL("../website/style.css", import.meta.url), "utf8"));
+  assert.equal(css.body, readFileSync(new URL("../src/website/style.css", import.meta.url), "utf8"));
 });
 
 test("rejects unsupported methods, malformed URLs and paths outside the generated site", async () => {

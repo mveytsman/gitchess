@@ -1,7 +1,7 @@
 import { Worker } from "node:worker_threads";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createWebServer } from "./web.js";
+import { createWebServer } from "./static.js";
 
 const port = Number(process.env.GITCHESS_WEB_PORT ?? 8080);
 const host = process.env.GITCHESS_WEB_HOST ?? "127.0.0.1";
@@ -11,10 +11,10 @@ if (!Number.isInteger(port) || port < 0 || port > 65535) {
 }
 if (!host) throw new Error("GITCHESS_WEB_HOST must not be empty");
 
-const root = fileURLToPath(new URL("../", import.meta.url));
+const root = fileURLToPath(new URL("../../", import.meta.url));
 const output = resolve(process.env.GITCHESS_WEB_ROOT ?? `${root}/dist/public`);
 const server = createWebServer(output);
-const worker = new Worker(new URL("./game-site-worker.js", import.meta.url), {
+const worker = new Worker(new URL("./worker.js", import.meta.url), {
   workerData: {
     repo: resolve(process.env.GITCHESS_REPO ?? `${root}/var/chess.git`),
     output,

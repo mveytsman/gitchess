@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Chess } from "chess.js";
-import { GitRepository } from "./git.js";
-import { parseGameRef } from "./games.js";
-import { escapeHtml as escape, renderPage } from "./site.js";
+import { GitRepository } from "../git.js";
+import { parseGameRef } from "../games.js";
+import { escapeHtml as escape, renderPage } from "./layout.js";
 
 type Entry = { oid: string; author: string; message: string };
 type PublishedGame = { oid: string; id: string; row: string };
@@ -103,6 +103,6 @@ git switch --track origin/${escape(ref.slice("refs/heads/".length))}</pre>
   }
 
   private writeIndex(body: string, slugs: string[]): void {
-    writeAtomic(join(this.output, "games/index.html"), renderPage("Games", `<h1>Games</h1>${body}<p class="muted">Public games from the chess repository. Refresh to see updates.</p>`, "games", slugs));
+    writeAtomic(join(this.output, "games/index.html"), renderPage("games", `<h1>Games</h1>${body}<p class="muted">Public games from the chess repository. Refresh to see updates.</p>`, "games", slugs));
   }
 }

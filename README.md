@@ -399,8 +399,9 @@ authentication events; they do not start an SSH server.
 
 ## Website
 
-The website’s own Markdown pages live in `website/pages/`, independently of the
-player guide in `repository/README.md`. Edit `website/pages/about.md` to update
+Website code, Markdown pages, and CSS live together in `src/website/`.
+The website’s own Markdown pages live in `src/website/pages/`, independently of the
+player guide in `repository/README.md`. Edit `src/website/pages/about.md` to update
 the homepage. Add another lowercase, hyphenated `.md` file to create a page and
 its navigation tab (for example, `help.md` becomes `/help/`). Use a first-level
 heading for the page title and site-relative URLs for links between pages.
@@ -412,7 +413,7 @@ to serve these pages. The generated directory can also be served by another
 static web server.
 
 Run `npm run web` to build and preview at `http://127.0.0.1:8080`. This starts
-only the HTTP server. Rebuild after editing Markdown or `website/style.css`;
+only the HTTP server. Rebuild after editing Markdown or `src/website/style.css`;
 the running server reads the updated files.
 
 The Games tab reads public branches from `GITCHESS_REPO` (default:

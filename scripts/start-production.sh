@@ -28,7 +28,7 @@ node dist/bot-worker.js &
 bot_pid=$!
 node dist/server.js &
 server_pid=$!
-node dist/web-server.js &
+node dist/website/server.js &
 web_pid=$!
 
 set +e

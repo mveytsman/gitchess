@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const defaultRoot = fileURLToPath(new URL("./public/", import.meta.url));
+const defaultRoot = fileURLToPath(new URL("../public/", import.meta.url));
 
 export async function serveStatic(
   request: IncomingMessage,

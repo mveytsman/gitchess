@@ -9,10 +9,10 @@ import { connect } from "node:net";
 import test from "node:test";
 import { Chess } from "chess.js";
 import { GitRepository } from "../dist/git.js";
-import { GameSite } from "../dist/game-site.js";
-import { buildSite } from "../dist/site.js";
+import { GameSite } from "../dist/website/games.js";
+import { buildSite } from "../dist/website/layout.js";
 
-const source = fileURLToPath(new URL("../website/", import.meta.url));
+const source = fileURLToPath(new URL("../src/website/", import.meta.url));
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "gitchess-game-site-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -96,7 +96,7 @@ test("uses history to recognize repetition draws", (t) => {
 for (const signal of ["SIGINT", "SIGTERM"]) {
   test(`HTTP server stops on ${signal} with an incomplete request and active refresh worker`, { timeout: 10000 }, async (t) => {
     const { repo, output } = fixture(t);
-    const child = spawn(process.execPath, [fileURLToPath(new URL("../dist/web-server.js", import.meta.url))], {
+    const child = spawn(process.execPath, [fileURLToPath(new URL("../dist/website/server.js", import.meta.url))], {
       env: { ...process.env, GITCHESS_WEB_PORT: "0", GITCHESS_WEB_HOST: "127.0.0.1", GITCHESS_REPO: repo, GITCHESS_WEB_ROOT: output },
       stdio: ["ignore", "pipe", "pipe"],
     });
