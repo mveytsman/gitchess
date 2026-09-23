@@ -5,20 +5,22 @@ A learning project exploring “FUSE for Git” through a Git-backed chess game.
 ## Play on the hosted server
 
 The project website is [git.max.computer](https://git.max.computer), and the
-Git-over-SSH endpoint is `ssh://git@git.max.computer/chess.git`.
+Git-over-SSH endpoint is `ssh://git.max.computer/chess.git`.
 
 Clone the game repository with its `git chess` alias configured:
 
 ```sh
 git clone -c alias.chess='!./git-chess' \
-  ssh://git@git.max.computer/chess.git chess
+  ssh://git.max.computer/chess.git chess
 cd chess
 git chess install
 ```
 
-Your first connection asks you to register a username. After cloning, use
-`git chess players` to find an opponent and `git chess challenge <username>` to
-start a game.
+You need an SSH key on your machine (`ssh-keygen -t ed25519` creates one if
+needed). Your first connection asks you to register a username. The SSH login
+name is ignored; your verified public key determines your gitchess identity.
+After cloning, use `git chess players` to find an opponent and
+`git chess challenge <username>` to start a game.
 
 ## Run locally
 
@@ -34,9 +36,10 @@ npm start
 npm run bot
 ```
 
-The server listens on `127.0.0.1:2222`. Connect as SSH user `git` with your own
-SSH key. An unregistered key triggers username signup during authentication;
-returning keys log in automatically. No account password is required.
+The server listens on `127.0.0.1:2222`. Connect with your own SSH key; the SSH
+login name is ignored. An unregistered key triggers username signup during
+authentication; returning keys log in automatically. No account password is
+required.
 
 `npm run setup` generates the server's persistent
 host key at `var/ssh_host_ed25519`, which is gitignored. Running setup again
@@ -59,7 +62,7 @@ From another terminal, clone into a directory outside this project checkout
 repository):
 
 ```sh
-git clone ssh://git@localhost:2222/chess.git ~/chess
+git clone ssh://localhost:2222/chess.git ~/chess
 cd ~/chess
 ```
 
@@ -67,7 +70,7 @@ To configure the repository-local `git chess` alias as part of cloning:
 
 ```sh
 git clone -c alias.chess='!./git-chess' \
-  ssh://git@localhost:2222/chess.git ~/chess
+  ssh://localhost:2222/chess.git ~/chess
 cd ~/chess
 ```
 
@@ -95,7 +98,7 @@ OpenSSH). For a client configuration that disables it, try:
 
 ```sh
 GIT_SSH_COMMAND='ssh -o BatchMode=no -o KbdInteractiveAuthentication=yes -o PreferredAuthentications=publickey,keyboard-interactive' \
-  git clone ssh://git@localhost:2222/chess.git ~/chess
+  git clone ssh://localhost:2222/chess.git ~/chess
 ```
 
 Register a key interactively before using it in automated jobs. There is no
@@ -364,7 +367,7 @@ Clone using the production domain; port 22 is implicit:
 
 ```sh
 git clone -c alias.chess='!./git-chess' \
-  ssh://git@git.max.computer/chess.git chess
+  ssh://git.max.computer/chess.git chess
 cd chess
 git chess install
 ```

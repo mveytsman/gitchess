@@ -95,21 +95,22 @@ test("signup requires a signed key, retries names, and recognizes returning user
   const key = keypair();
   let player;
   const auth = authentication(users, (name) => { player = name; });
-  const premature = context({ method: "keyboard-interactive" });
+  const premature = context({ method: "keyboard-interactive", username: "local-login-name" });
   auth(premature);
   assert.equal(premature.accepted, false);
-  const probe = context({ method: "publickey", key: { data: key.publicKey } });
+  const probe = context({ method: "publickey", username: "local-login-name", key: { data: key.publicKey } });
   auth(probe);
   assert.equal(probe.accepted, true);
   assert.equal(player, undefined);
   auth(premature);
   assert.equal(premature.accepted, false);
   const proof = signed(key);
+  proof.username = "local-login-name";
   auth(proof);
   assert.deepEqual(proof.rejected, { methods: ["keyboard-interactive"], partial: true });
   assert.equal(proof.accepted, false);
   const answers = ["../invalid", "alice"];
-  const signup = context({ method: "keyboard-interactive",
+  const signup = context({ method: "keyboard-interactive", username: "local-login-name",
     prompt(prompts, title, instructions, callback) {
       assert.equal(prompts[0].echo, true);
       callback([answers.shift()]);
@@ -121,6 +122,7 @@ test("signup requires a signed key, retries names, and recognizes returning user
   let returning;
   const next = authentication(users, (name) => { returning = name; });
   const login = signed(key);
+  login.username = "someone-else";
   next(login);
   assert.equal(login.accepted, true);
   assert.equal(returning, "alice");

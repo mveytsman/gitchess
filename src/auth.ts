@@ -6,10 +6,6 @@ export function authentication(users: Users, authenticated: (username: string) =
   let verifiedKey: Buffer | undefined;
 
   return (ctx: AuthContext): void => {
-    if (ctx.username !== "git") {
-      ctx.reject(["publickey"]);
-      return;
-    }
     if (ctx.method === "publickey") {
       verifiedKey = undefined;
       const key = ssh2.utils.parseKey(ctx.key.data);
